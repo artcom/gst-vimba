@@ -1,5 +1,5 @@
 /* GStreamer
- * Copyright (C) 2015 FIXME <fixme@example.com>
+ * Copyright (C) 2015 Art+Com AG <info@artcom.de>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public

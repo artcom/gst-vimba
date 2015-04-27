@@ -1,5 +1,5 @@
 /* GStreamer
- * Copyright (C) 2015 FIXME <fixme@example.com>
+ * Copyright (C) 2015 Art+Com AG <info@artcom.de>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -19,7 +19,7 @@
 /**
  * SECTION:element-gstvimbasrc
  *
- * The vimbasrc element does FIXME stuff.
+ * The vimbasrc element supports cameras that use the VIMBA SDK
  *
  * <refsect2>
  * <title>Example launch line</title>
@@ -418,13 +418,13 @@ static gboolean
 plugin_init (GstPlugin * plugin)
 {
 
-  /* FIXME Remember to set the rank if it's an element that is meant
+  /* Remember to set the rank if it's an element that is meant
      to be autoplugged by decodebin. */
   return gst_element_register (plugin, "vimbasrc", GST_RANK_NONE,
       GST_TYPE_VIMBA_SRC);
 }
 
-/* FIXME: these are normally defined by the GStreamer build system.
+/* These are normally defined by the GStreamer build system.
    If you are creating an element to be included in gst-plugins-*,
    remove these, as they're always defined.  Otherwise, edit as
    appropriate for your external plugin package. */
