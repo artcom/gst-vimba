@@ -133,6 +133,7 @@ gst_vimba_src_class_init (GstVimbaSrcClass * klass)
 static void
 gst_vimba_src_init (GstVimbaSrc *vimbasrc)
 {
+    gst_base_src_set_live(GST_BASE_SRC(vimbasrc), TRUE);
 }
 
 void
