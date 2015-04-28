@@ -94,39 +94,43 @@ G_DEFINE_TYPE_WITH_CODE (GstVimbaSrc, gst_vimba_src, GST_TYPE_PUSH_SRC,
 static void
 gst_vimba_src_class_init (GstVimbaSrcClass * klass)
 {
-  GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
-  GstBaseSrcClass *base_src_class = GST_BASE_SRC_CLASS (klass);
-  GstPushSrcClass *push_src_class = GST_PUSH_SRC_CLASS (klass);
+    GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+    GstBaseSrcClass *base_src_class = GST_BASE_SRC_CLASS (klass);
+    GstPushSrcClass *push_src_class = GST_PUSH_SRC_CLASS (klass);
 
-  /* Setting up pads and setting metadata should be moved to
-     base_class_init if you intend to subclass this class. */
-  gst_element_class_add_pad_template (GST_ELEMENT_CLASS(klass),
-      gst_static_pad_template_get (&gst_vimba_src_src_template));
+    /* Setting up pads and setting metadata should be moved to
+       base_class_init if you intend to subclass this class. */
+    gst_element_class_add_pad_template (GST_ELEMENT_CLASS(klass),
+            gst_static_pad_template_get (&gst_vimba_src_src_template));
 
-  gst_element_class_set_static_metadata (GST_ELEMENT_CLASS(klass),
-      "FIXME Long name", "Generic", "FIXME Description",
-      "FIXME <fixme@example.com>");
+    gst_element_class_set_static_metadata (
+        GST_ELEMENT_CLASS(klass),
+        "VIMBA Camera Source",
+        "Source",
+        "Provides access to cameras supporting the VIMBA SDK",
+        "Art+Com AG <info@artcom.de>"
+    );
 
-  gobject_class->set_property = gst_vimba_src_set_property;
-  gobject_class->get_property = gst_vimba_src_get_property;
-  gobject_class->dispose = gst_vimba_src_dispose;
-  gobject_class->finalize = gst_vimba_src_finalize;
-  base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_vimba_src_get_caps);
-  base_src_class->negotiate = GST_DEBUG_FUNCPTR (gst_vimba_src_negotiate);
-  base_src_class->fixate = GST_DEBUG_FUNCPTR (gst_vimba_src_fixate);
-  base_src_class->set_caps = GST_DEBUG_FUNCPTR (gst_vimba_src_set_caps);
-  base_src_class->decide_allocation = GST_DEBUG_FUNCPTR (gst_vimba_src_decide_allocation);
-  base_src_class->start = GST_DEBUG_FUNCPTR (gst_vimba_src_start);
-  base_src_class->stop = GST_DEBUG_FUNCPTR (gst_vimba_src_stop);
-  base_src_class->get_times = GST_DEBUG_FUNCPTR (gst_vimba_src_get_times);
-  base_src_class->get_size = GST_DEBUG_FUNCPTR (gst_vimba_src_get_size);
-  base_src_class->unlock = GST_DEBUG_FUNCPTR (gst_vimba_src_unlock);
-  base_src_class->unlock_stop = GST_DEBUG_FUNCPTR (gst_vimba_src_unlock_stop);
-  base_src_class->query = GST_DEBUG_FUNCPTR (gst_vimba_src_query);
-  base_src_class->event = GST_DEBUG_FUNCPTR (gst_vimba_src_event);
-  push_src_class->create = GST_DEBUG_FUNCPTR (gst_vimba_src_create);
-  push_src_class->alloc = GST_DEBUG_FUNCPTR (gst_vimba_src_alloc);
-  push_src_class->fill = GST_DEBUG_FUNCPTR (gst_vimba_src_fill);
+    gobject_class->set_property = gst_vimba_src_set_property;
+    gobject_class->get_property = gst_vimba_src_get_property;
+    gobject_class->dispose = gst_vimba_src_dispose;
+    gobject_class->finalize = gst_vimba_src_finalize;
+    base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_vimba_src_get_caps);
+    base_src_class->negotiate = GST_DEBUG_FUNCPTR (gst_vimba_src_negotiate);
+    base_src_class->fixate = GST_DEBUG_FUNCPTR (gst_vimba_src_fixate);
+    base_src_class->set_caps = GST_DEBUG_FUNCPTR (gst_vimba_src_set_caps);
+    base_src_class->decide_allocation = GST_DEBUG_FUNCPTR (gst_vimba_src_decide_allocation);
+    base_src_class->start = GST_DEBUG_FUNCPTR (gst_vimba_src_start);
+    base_src_class->stop = GST_DEBUG_FUNCPTR (gst_vimba_src_stop);
+    base_src_class->get_times = GST_DEBUG_FUNCPTR (gst_vimba_src_get_times);
+    base_src_class->get_size = GST_DEBUG_FUNCPTR (gst_vimba_src_get_size);
+    base_src_class->unlock = GST_DEBUG_FUNCPTR (gst_vimba_src_unlock);
+    base_src_class->unlock_stop = GST_DEBUG_FUNCPTR (gst_vimba_src_unlock_stop);
+    base_src_class->query = GST_DEBUG_FUNCPTR (gst_vimba_src_query);
+    base_src_class->event = GST_DEBUG_FUNCPTR (gst_vimba_src_event);
+    push_src_class->create = GST_DEBUG_FUNCPTR (gst_vimba_src_create);
+    push_src_class->alloc = GST_DEBUG_FUNCPTR (gst_vimba_src_alloc);
+    push_src_class->fill = GST_DEBUG_FUNCPTR (gst_vimba_src_fill);
 
 }
 
