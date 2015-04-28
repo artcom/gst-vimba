@@ -45,9 +45,9 @@ GST_DEBUG_CATEGORY_STATIC (gst_vimba_src_debug_category);
 
 
 static void gst_vimba_src_set_property (GObject * object,
-    guint property_id, const GValue * value, GParamSpec * pspec);
+        guint property_id, const GValue * value, GParamSpec * pspec);
 static void gst_vimba_src_get_property (GObject * object,
-    guint property_id, GValue * value, GParamSpec * pspec);
+        guint property_id, GValue * value, GParamSpec * pspec);
 static void gst_vimba_src_dispose (GObject * object);
 static void gst_vimba_src_finalize (GObject * object);
 
@@ -56,11 +56,11 @@ static gboolean gst_vimba_src_negotiate (GstBaseSrc * src);
 static GstCaps *gst_vimba_src_fixate (GstBaseSrc * src, GstCaps * caps);
 static gboolean gst_vimba_src_set_caps (GstBaseSrc * src, GstCaps * caps);
 static gboolean gst_vimba_src_decide_allocation (GstBaseSrc * src,
-    GstQuery * query);
+        GstQuery * query);
 static gboolean gst_vimba_src_start (GstBaseSrc * src);
 static gboolean gst_vimba_src_stop (GstBaseSrc * src);
 static void gst_vimba_src_get_times (GstBaseSrc * src, GstBuffer * buffer,
-    GstClockTime * start, GstClockTime * end);
+        GstClockTime * start, GstClockTime * end);
 static gboolean gst_vimba_src_get_size (GstBaseSrc * src, guint64 * size);
 static gboolean gst_vimba_src_unlock (GstBaseSrc * src);
 static gboolean gst_vimba_src_unlock_stop (GstBaseSrc * src);
@@ -72,7 +72,7 @@ static GstFlowReturn gst_vimba_src_fill (GstPushSrc * src, GstBuffer *buf);
 
 enum
 {
-  PROP_0
+    PROP_0
 };
 
 /* pad templates */
@@ -82,14 +82,22 @@ GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS ("application/unknown")
-    );
+);
 
 
 /* class initialization */
 
-G_DEFINE_TYPE_WITH_CODE (GstVimbaSrc, gst_vimba_src, GST_TYPE_PUSH_SRC,
-  GST_DEBUG_CATEGORY_INIT (gst_vimba_src_debug_category, "vimbasrc", 0,
-  "debug category for vimbasrc element"));
+G_DEFINE_TYPE_WITH_CODE (
+    GstVimbaSrc,
+    gst_vimba_src,
+    GST_TYPE_PUSH_SRC,
+    GST_DEBUG_CATEGORY_INIT (
+        gst_vimba_src_debug_category,
+        "vimbasrc",
+        0,
+        "debug category for vimbasrc element"
+    )
+);
 
 static void
 gst_vimba_src_class_init (GstVimbaSrcClass * klass)
@@ -142,143 +150,143 @@ gst_vimba_src_init (GstVimbaSrc *vimbasrc)
 
 void
 gst_vimba_src_set_property (GObject * object, guint property_id,
-    const GValue * value, GParamSpec * pspec)
+        const GValue * value, GParamSpec * pspec)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (object);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (object);
 
-  GST_DEBUG_OBJECT (vimbasrc, "set_property");
+    GST_DEBUG_OBJECT (vimbasrc, "set_property");
 
-  switch (property_id) {
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
-      break;
-  }
+    switch (property_id) {
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+            break;
+    }
 }
 
 void
 gst_vimba_src_get_property (GObject * object, guint property_id,
-    GValue * value, GParamSpec * pspec)
+        GValue * value, GParamSpec * pspec)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (object);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (object);
 
-  GST_DEBUG_OBJECT (vimbasrc, "get_property");
+    GST_DEBUG_OBJECT (vimbasrc, "get_property");
 
-  switch (property_id) {
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
-      break;
-  }
+    switch (property_id) {
+        default:
+            G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+            break;
+    }
 }
 
 void
 gst_vimba_src_dispose (GObject * object)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (object);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (object);
 
-  GST_DEBUG_OBJECT (vimbasrc, "dispose");
+    GST_DEBUG_OBJECT (vimbasrc, "dispose");
 
-  /* clean up as possible.  may be called multiple times */
+    /* clean up as possible.  may be called multiple times */
 
-  G_OBJECT_CLASS (gst_vimba_src_parent_class)->dispose (object);
+    G_OBJECT_CLASS (gst_vimba_src_parent_class)->dispose (object);
 }
 
 void
 gst_vimba_src_finalize (GObject * object)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (object);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (object);
 
-  GST_DEBUG_OBJECT (vimbasrc, "finalize");
+    GST_DEBUG_OBJECT (vimbasrc, "finalize");
 
-  /* clean up object here */
+    /* clean up object here */
 
-  G_OBJECT_CLASS (gst_vimba_src_parent_class)->finalize (object);
+    G_OBJECT_CLASS (gst_vimba_src_parent_class)->finalize (object);
 }
 
 /* get caps from subclass */
 static GstCaps *
 gst_vimba_src_get_caps (GstBaseSrc * src, GstCaps * filter)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
-  GST_DEBUG_OBJECT (vimbasrc, "get_caps");
+    GST_DEBUG_OBJECT (vimbasrc, "get_caps");
 
-  return NULL;
+    return NULL;
 }
 
 /* decide on caps */
 static gboolean
 gst_vimba_src_negotiate (GstBaseSrc * src)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
-  GST_DEBUG_OBJECT (vimbasrc, "negotiate");
+    GST_DEBUG_OBJECT (vimbasrc, "negotiate");
 
-  return TRUE;
+    return TRUE;
 }
 
 /* called if, in negotiation, caps need fixating */
 static GstCaps *
 gst_vimba_src_fixate (GstBaseSrc * src, GstCaps * caps)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
-  GST_DEBUG_OBJECT (vimbasrc, "fixate");
+    GST_DEBUG_OBJECT (vimbasrc, "fixate");
 
-  return NULL;
+    return NULL;
 }
 
 /* notify the subclass of new caps */
 static gboolean
 gst_vimba_src_set_caps (GstBaseSrc * src, GstCaps * caps)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
-  GST_DEBUG_OBJECT (vimbasrc, "set_caps");
+    GST_DEBUG_OBJECT (vimbasrc, "set_caps");
 
-  return TRUE;
+    return TRUE;
 }
 
 /* setup allocation query */
 static gboolean
 gst_vimba_src_decide_allocation (GstBaseSrc * src, GstQuery * query)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
-  GST_DEBUG_OBJECT (vimbasrc, "decide_allocation");
+    GST_DEBUG_OBJECT (vimbasrc, "decide_allocation");
 
-  return TRUE;
+    return TRUE;
 }
 
 /* start and stop processing, ideal for opening/closing the resource */
 static gboolean
 gst_vimba_src_start (GstBaseSrc * src)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
-  GST_DEBUG_OBJECT (vimbasrc, "start");
+    GST_DEBUG_OBJECT (vimbasrc, "start");
 
-  return TRUE;
+    return TRUE;
 }
 
 static gboolean
 gst_vimba_src_stop (GstBaseSrc * src)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
-  GST_DEBUG_OBJECT (vimbasrc, "stop");
+    GST_DEBUG_OBJECT (vimbasrc, "stop");
 
-  return TRUE;
+    return TRUE;
 }
 
 /* given a buffer, return start and stop time when it should be pushed
  * out. The base class will sync on the clock using these times. */
 static void
 gst_vimba_src_get_times (GstBaseSrc * src, GstBuffer * buffer,
-    GstClockTime * start, GstClockTime * end)
+        GstClockTime * start, GstClockTime * end)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
-  GST_DEBUG_OBJECT (vimbasrc, "get_times");
+    GST_DEBUG_OBJECT (vimbasrc, "get_times");
 
 }
 
@@ -286,11 +294,11 @@ gst_vimba_src_get_times (GstBaseSrc * src, GstBuffer * buffer,
 static gboolean
 gst_vimba_src_get_size (GstBaseSrc * src, guint64 * size)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
-  GST_DEBUG_OBJECT (vimbasrc, "get_size");
+    GST_DEBUG_OBJECT (vimbasrc, "get_size");
 
-  return TRUE;
+    return TRUE;
 }
 
 /* unlock any pending access to the resource. subclasses should unlock
@@ -298,44 +306,44 @@ gst_vimba_src_get_size (GstBaseSrc * src, guint64 * size)
 static gboolean
 gst_vimba_src_unlock (GstBaseSrc * src)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
-  GST_DEBUG_OBJECT (vimbasrc, "unlock");
+    GST_DEBUG_OBJECT (vimbasrc, "unlock");
 
-  return TRUE;
+    return TRUE;
 }
 
 /* Clear any pending unlock request, as we succeeded in unlocking */
 static gboolean
 gst_vimba_src_unlock_stop (GstBaseSrc * src)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
-  GST_DEBUG_OBJECT (vimbasrc, "unlock_stop");
+    GST_DEBUG_OBJECT (vimbasrc, "unlock_stop");
 
-  return TRUE;
+    return TRUE;
 }
 
 /* notify subclasses of a query */
 static gboolean
 gst_vimba_src_query (GstBaseSrc * src, GstQuery * query)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
-  GST_DEBUG_OBJECT (vimbasrc, "query");
+    GST_DEBUG_OBJECT (vimbasrc, "query");
 
-  return TRUE;
+    return TRUE;
 }
 
 /* notify subclasses of an event */
 static gboolean
 gst_vimba_src_event (GstBaseSrc * src, GstEvent * event)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
-  GST_DEBUG_OBJECT (vimbasrc, "event");
+    GST_DEBUG_OBJECT (vimbasrc, "event");
 
-  return TRUE;
+    return TRUE;
 }
 
 /* ask the subclass to create a buffer with offset and size, the default
@@ -343,11 +351,11 @@ gst_vimba_src_event (GstBaseSrc * src, GstEvent * event)
 static GstFlowReturn
 gst_vimba_src_create (GstPushSrc * src, GstBuffer ** buf)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
-  GST_DEBUG_OBJECT (vimbasrc, "create");
+    GST_DEBUG_OBJECT (vimbasrc, "create");
 
-  return GST_FLOW_OK;
+    return GST_FLOW_OK;
 }
 
 /* ask the subclass to allocate an output buffer. The default implementation
@@ -355,32 +363,32 @@ gst_vimba_src_create (GstPushSrc * src, GstBuffer ** buf)
 static GstFlowReturn
 gst_vimba_src_alloc (GstPushSrc * src, GstBuffer ** buf)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
-  GST_DEBUG_OBJECT (vimbasrc, "alloc");
+    GST_DEBUG_OBJECT (vimbasrc, "alloc");
 
-  return GST_FLOW_OK;
+    return GST_FLOW_OK;
 }
 
 /* ask the subclass to fill the buffer with data from offset and size */
 static GstFlowReturn
 gst_vimba_src_fill (GstPushSrc * src, GstBuffer * buf)
 {
-  GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
-  GST_DEBUG_OBJECT (vimbasrc, "fill");
+    GST_DEBUG_OBJECT (vimbasrc, "fill");
 
-  return GST_FLOW_OK;
+    return GST_FLOW_OK;
 }
 
 static gboolean
 plugin_init (GstPlugin * plugin)
 {
 
-  /* Remember to set the rank if it's an element that is meant
-     to be autoplugged by decodebin. */
-  return gst_element_register (plugin, "vimbasrc", GST_RANK_NONE,
-      GST_TYPE_VIMBA_SRC);
+    /* Remember to set the rank if it's an element that is meant
+       to be autoplugged by decodebin. */
+    return gst_element_register (plugin, "vimbasrc", GST_RANK_NONE,
+            GST_TYPE_VIMBA_SRC);
 }
 
 /* These are normally defined by the GStreamer build system.
@@ -400,9 +408,14 @@ plugin_init (GstPlugin * plugin)
 #define GST_PACKAGE_ORIGIN "http://artcom.de"
 #endif
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
+GST_PLUGIN_DEFINE (
+    GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
     vimbasrc,
     "Vimba source plugin",
-    plugin_init, VERSION, "LGPL", PACKAGE_NAME, GST_PACKAGE_ORIGIN)
+    plugin_init, VERSION,
+    "LGPL",
+    PACKAGE_NAME,
+    GST_PACKAGE_ORIGIN
+)
 

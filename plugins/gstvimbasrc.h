@@ -35,13 +35,12 @@ typedef struct _GstVimbaSrcClass GstVimbaSrcClass;
 
 struct _GstVimbaSrc
 {
-  GstPushSrc base_vimbasrc;
-
+    GstPushSrc base_vimbasrc;
 };
 
 struct _GstVimbaSrcClass
 {
-  GstPushSrcClass base_vimbasrc_class;
+    GstPushSrcClass base_vimbasrc_class;
 };
 
 GType gst_vimba_src_get_type (void);
