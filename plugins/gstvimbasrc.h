@@ -21,6 +21,7 @@
 #define _GST_VIMBA_SRC_H_
 
 #include <gst/base/gstpushsrc.h>
+#include <VimbaC.h>
 
 G_BEGIN_DECLS
 
@@ -32,10 +33,25 @@ G_BEGIN_DECLS
 
 typedef struct _GstVimbaSrc GstVimbaSrc;
 typedef struct _GstVimbaSrcClass GstVimbaSrcClass;
+typedef struct _VimbaConfig VimbaConfig;
+
+struct _VimbaConfig {
+    const char* camera_id;
+    VmbHandle_t camera_handle;
+    VmbInt64_t  max_width;
+    VmbInt64_t  max_height;
+    VmbInt64_t  width;
+    VmbInt64_t  height;
+    VmbFrame_t  frame;
+    VmbInt32_t  buffer_size;
+    const char* format;
+};
 
 struct _GstVimbaSrc
 {
-    GstPushSrc base_vimbasrc;
+    GstPushSrc  base_vimbasrc;
+    VimbaConfig* config;
+    GMutex config_lock; 
 };
 
 struct _GstVimbaSrcClass
