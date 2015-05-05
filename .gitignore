@@ -20,11 +20,11 @@ missing
 plugins/.deps/
 plugins/.libs/
 plugins/Makefile
-plugins/libgstvimba.la
-plugins/libgstvimba_la-gstvimbasrc.lo
-plugins/libgstvimba_la-gstvimbasrc.o
+plugins/libgstvimba*
 stamp-h1
 tools/.deps/
 tools/Makefile
 tools/gst-vimba
 tools/gst_vimba-gstvimba.o
+tags
+plugins/tags

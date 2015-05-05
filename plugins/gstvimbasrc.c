@@ -70,13 +70,8 @@ static gboolean gst_vimba_src_unlock_stop (GstBaseSrc * src);
 static gboolean gst_vimba_src_query (GstBaseSrc * src, GstQuery * query);
 static gboolean gst_vimba_src_event (GstBaseSrc * src, GstEvent * event);
 static GstFlowReturn gst_vimba_src_create (GstPushSrc * src, GstBuffer **buf);
-static GstFlowReturn gst_vimba_src_alloc (GstPushSrc * src, GstBuffer **buf);
-static GstFlowReturn gst_vimba_src_fill (GstPushSrc * src, GstBuffer *buf);
-
-gboolean gst_vimba_src_discover (GstVimbaSrc * src);
-gboolean gst_vimba_src_open_camera (GstVimbaSrc * src);
-gboolean gst_vimba_src_close_camera (GstVimbaSrc * src);
-gboolean gst_vimba_src_init_config(GstVimbaSrc * src);
+//static GstFlowReturn gst_vimba_src_alloc (GstPushSrc * src, GstBuffer **buf);
+//static GstFlowReturn gst_vimba_src_fill (GstPushSrc * src, GstBuffer *buf);
 
 enum
 {
@@ -174,23 +169,15 @@ static void
 gst_vimba_src_init (GstVimbaSrc *vimbasrc)
 {
 
-    //vimbasrc->config_lock = *g_mutex_new();
     g_mutex_init(&vimbasrc->config_lock);
 
     g_mutex_lock(&vimbasrc->config_lock);
-    vimbasrc->config = malloc(sizeof(VimbaConfig));
-    g_mutex_unlock(&vimbasrc->config_lock);
+    vimbasrc->vimba  = vimba_init();
+    vimba_discover(vimbasrc->vimba);
+    vimbasrc->camera = vimbacamera_init();
 
-    g_mutex_lock(&vimbasrc->config_lock);
     /* Startup the Vimba API */
-    VmbError_t err = VmbStartup();
-    if (VmbErrorInternalFault == err) {
-        g_error("Error initializing VIMBA");
-        exit(EXIT_FAILURE);
-    }
     g_mutex_unlock(&vimbasrc->config_lock);
-    /* Discover cameras */
-    gst_vimba_src_discover(vimbasrc);
     gst_base_src_set_live(GST_BASE_SRC(vimbasrc), TRUE);
     gst_base_src_set_format(GST_BASE_SRC(vimbasrc), GST_FORMAT_TIME);
 }
@@ -207,11 +194,19 @@ gst_vimba_src_set_property (GObject * object, guint property_id,
         case PROP_CAMERA:
             g_mutex_lock(&vimbasrc->config_lock);
             const gchar* camera_id = g_value_get_string(value);
-            vimbasrc->config->camera_id = camera_id;
-            //vimbasrc->config->camera_id = g_value_get_string(value);
-            g_mutex_unlock(&vimbasrc->config_lock);
+            vimbasrc->camera->camera_id = camera_id;
             /* open the camera */
-            gst_vimba_src_open_camera(vimbasrc);
+            if (vimbacamera_open(vimbasrc->camera)) {
+                if (vimbacamera_load(vimbasrc->camera)) {
+                    g_message(
+                        "camera configuration: width: %lu, height: %lu, format: %s",
+                        (unsigned long) vimbasrc->camera->width,
+                        (unsigned long) vimbasrc->camera->height,
+                        vimbasrc->camera->format
+                    );
+                }
+            }
+            g_mutex_unlock(&vimbasrc->config_lock);
             break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -229,7 +224,7 @@ gst_vimba_src_get_property (GObject * object, guint property_id,
 
     switch (property_id) {
         case PROP_CAMERA:
-            g_value_set_string(value, vimbasrc->config->camera_id);
+            g_value_set_string(value, vimbasrc->camera->camera_id);
             break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -245,7 +240,7 @@ gst_vimba_src_dispose (GObject * object)
     GST_DEBUG_OBJECT (vimbasrc, "dispose");
 
     /* clean up as possible.  may be called multiple times */
-    gst_vimba_src_close_camera(vimbasrc);
+    vimbacamera_close(vimbasrc->camera);
 
     G_OBJECT_CLASS (gst_vimba_src_parent_class)->dispose (object);
 }
@@ -259,10 +254,10 @@ gst_vimba_src_finalize (GObject * object)
 
     /* clean up object here */
     g_mutex_clear(&vimbasrc->config_lock);
-    free(vimbasrc->config);
+    free(vimbasrc->camera);
 
     /* Shutdown the Vimba API */
-    VmbShutdown();
+    vimba_destroy(vimbasrc->vimba);
 
     G_OBJECT_CLASS (gst_vimba_src_parent_class)->finalize (object);
 }
@@ -274,7 +269,6 @@ gst_vimba_src_get_caps (GstBaseSrc * src, GstCaps * filter)
     g_message("gst_vimba_src_get_caps");
     GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
     GstCaps *caps;
-    gst_vimba_src_init_config(vimbasrc);
 
     g_mutex_lock(&vimbasrc->config_lock);
     caps = gst_pad_get_pad_template_caps(GST_BASE_SRC_PAD(src));
@@ -288,19 +282,24 @@ gst_vimba_src_get_caps (GstBaseSrc * src, GstCaps * filter)
      * formats from the camera.
      */
 
+    /* FIXME:
+     * Get framerate
+     */
+
     GstStructure *bayer, *raw;
     raw   = gst_caps_get_structure(caps, 0);
     bayer = gst_caps_get_structure(caps, 1);
 
     gst_structure_set(raw,
-        "width",  GST_TYPE_INT_RANGE, 1, vimbasrc->config->max_width,
-        "height", GST_TYPE_INT_RANGE, 1, vimbasrc->config->max_height,
+        "width",  GST_TYPE_INT_RANGE, 1, vimbasrc->camera->max_width,
+        "height", GST_TYPE_INT_RANGE, 1, vimbasrc->camera->max_height,
         "format", G_TYPE_STRING, "BGRx",
+        "framerate", GST_TYPE_FRACTION, 1, 30,
         NULL
     );
     gst_structure_set(bayer,
-        "width",  GST_TYPE_INT_RANGE, 1, vimbasrc->config->max_width,
-        "height", GST_TYPE_INT_RANGE, 1, vimbasrc->config->max_height,
+        "width",  GST_TYPE_INT_RANGE, 1, vimbasrc->camera->max_width,
+        "height", GST_TYPE_INT_RANGE, 1, vimbasrc->camera->max_height,
         "format", G_TYPE_STRING, "grbg",
         NULL
     );
@@ -354,19 +353,19 @@ gst_vimba_src_set_caps (GstBaseSrc * src, GstCaps * caps)
     structure = gst_caps_get_structure(caps, 0);
     g_mutex_lock(&vimbasrc->config_lock);
 
-    vimbasrc->config->width = info.width;
-    vimbasrc->config->height = info.height;
+    vimbasrc->camera->width = info.width;
+    vimbasrc->camera->height = info.height;
     format = info.finfo->format;
 
     /* also set selected caps on the camera */
-    VmbFeatureIntSet(vimbasrc->config->camera_handle, "Width",
-        vimbasrc->config->width
+    VmbFeatureIntSet(vimbasrc->camera->camera_handle, "Width",
+        vimbasrc->camera->width
     );
-    VmbFeatureIntSet(vimbasrc->config->camera_handle, "Height",
-        vimbasrc->config->height
+    VmbFeatureIntSet(vimbasrc->camera->camera_handle, "Height",
+        vimbasrc->camera->height
     );
     /* FIXME: Set capability from fomat */
-    VmbFeatureEnumSet(vimbasrc->config->camera_handle, "PixelFormat",
+    VmbFeatureEnumSet(vimbasrc->camera->camera_handle, "PixelFormat",
         "BGR8Packed"
     );
 
@@ -395,16 +394,10 @@ gst_vimba_src_start (GstBaseSrc * src)
     GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
     g_mutex_lock(&vimbasrc->config_lock);
-    VmbCaptureStart(vimbasrc->config->camera_handle);
-    if (!VmbFeatureCommandRun(
-            vimbasrc->config->camera_handle,
-            "AquisitionStart"
-        )
-    ) {
-        g_error("Failed to start aquisition");
-        res = FALSE;
-    } else {
+    if (vimbacamera_start(vimbasrc->camera)) {
         g_message("Aquisition started");
+    } else {
+        g_error("Failed to start aquisition");
     }
     g_mutex_unlock(&vimbasrc->config_lock);
 
@@ -420,17 +413,11 @@ gst_vimba_src_stop (GstBaseSrc * src)
     GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
     g_mutex_lock(&vimbasrc->config_lock);
-    if (!VmbFeatureCommandRun(
-            vimbasrc->config->camera_handle,
-            "AquisitionStop"
-        )
-    ) {
-        g_error("Failed to stop aquisition");
-        res = FALSE;
-    } else {
+    if (vimbacamera_stop(vimbasrc->camera)) {
         g_message("Aquisition stopped");
+    } else {
+        g_error("Failed to stop aquisition");
     }
-    VmbCaptureEnd(vimbasrc->config->camera_handle);
     g_mutex_unlock(&vimbasrc->config_lock);
 
     GST_DEBUG_OBJECT (vimbasrc, "stop");
@@ -512,89 +499,60 @@ static GstFlowReturn
 gst_vimba_src_create (GstPushSrc * src, GstBuffer ** bufp)
 {
     GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
-    VmbError_t err;
     GstClockTime gst_pts = GST_CLOCK_TIME_NONE;
     GstBuffer *buf;
     GstFlowReturn ret = GST_FLOW_ERROR;
+    int i;
 
     g_mutex_lock(&vimbasrc->config_lock);
-
-    /** capture a frame synchronously */
-//    err = VmbCaptureFrameQueue(
-//        vimbasrc->config->camera_handle,
-//        &vimbasrc->config->frame,
-//        NULL
-//    );
-    if (VmbErrorSuccess == err) {
-        err = VmbCaptureFrameWait(
-            vimbasrc->config->camera_handle,
-            &vimbasrc->config->frame,
-            5000
-        );
-
-        g_mutex_unlock(&vimbasrc->config_lock);
-        if (VmbErrorSuccess == err) {
-            g_mutex_lock(&vimbasrc->config_lock);
-
-            buf = gst_buffer_new_allocate(NULL, vimbasrc->config->frame.bufferSize, NULL);
-
-            if (buf) {
-                GST_BUFFER_PTS(buf) = gst_pts;
-                gst_buffer_fill(
-                    buf, 0,
-                    vimbasrc->config->frame.buffer,
-                    vimbasrc->config->frame.bufferSize
-                );
-                *bufp = buf;
-                ret = GST_FLOW_OK;
-            }
-
-            g_mutex_unlock(&vimbasrc->config_lock);
-        } else if (VmbErrorTimeout == err) {
-            g_error("capture timeout");
-            ret = GST_FLOW_ERROR;
-        } else if (VmbErrorBadHandle == err) {
-            g_error("bad camera handle");
-            ret = GST_FLOW_ERROR;
+    VmbFrame_t next_frame;
+    for (i = 0; i < VIMBA_FRAME_COUNT; i++) {
+        if (VmbFrameStatusComplete == vimbasrc->camera->frames[i].receiveStatus)  {
+            next_frame = vimbasrc->camera->frames[i];
+            break;
         }
-    } else if (VmbErrorBadHandle == err) {
-        g_error("queued invalid frame");
-        ret = GST_FLOW_ERROR;
-    } else if (VmbErrorStructSize == err) {
-        g_error("invalid struct size");
-        ret = GST_FLOW_ERROR;
     }
-
-    err = VmbCaptureQueueFlush(vimbasrc->config->camera_handle);
+    buf = gst_buffer_new_allocate(NULL, next_frame.bufferSize, NULL);
+    if (buf) {
+        GST_BUFFER_PTS(buf) = gst_pts;
+        gst_buffer_fill(
+            buf, 0,
+            next_frame.buffer,
+            next_frame.bufferSize
+        );
+        *bufp = buf;
+        ret = GST_FLOW_OK;
+    }
+    g_mutex_unlock(&vimbasrc->config_lock);
 
     GST_DEBUG_OBJECT (vimbasrc, "create");
 
     return ret;
 }
 
-/* ask the subclass to allocate an output buffer. The default implementation
- * will use the negotiated allocator. */
-static GstFlowReturn
-gst_vimba_src_alloc (GstPushSrc * src, GstBuffer ** buf)
-{
-    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
-
-    GST_DEBUG_OBJECT (vimbasrc, "alloc");
-
-    return GST_FLOW_OK;
-}
-
-/* ask the subclass to fill the buffer with data from offset and size */
-static GstFlowReturn
-gst_vimba_src_fill (GstPushSrc * src, GstBuffer * buf)
-{
-    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
-
-    GST_DEBUG_OBJECT (vimbasrc, "fill");
-
-    return GST_FLOW_OK;
-}
-
+///* ask the subclass to allocate an output buffer. The default implementation
+// * will use the negotiated allocator. */
+//static GstFlowReturn
+//gst_vimba_src_alloc (GstPushSrc * src, GstBuffer ** buf)
+//{
+//    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
+//
+//    GST_DEBUG_OBJECT (vimbasrc, "alloc");
+//
+//    return GST_FLOW_OK;
+//}
+//
+///* ask the subclass to fill the buffer with data from offset and size */
+//static GstFlowReturn
+//gst_vimba_src_fill (GstPushSrc * src, GstBuffer * buf)
+//{
+//    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
+//
+//    GST_DEBUG_OBJECT (vimbasrc, "fill");
+//
+//    return GST_FLOW_OK;
+//}
+//
 static gboolean
 plugin_init (GstPlugin * plugin)
 {
@@ -605,157 +563,6 @@ plugin_init (GstPlugin * plugin)
             GST_TYPE_VIMBA_SRC);
 }
 
-gboolean
-gst_vimba_src_discover(GstVimbaSrc * src) {
-    /* Look for any attached cameras */
-    VmbBool_t gigE;
-    VmbUint32_t count, i;
-    VmbCameraInfo_t *cameras;
-    g_mutex_lock(&src->config_lock);
-    VmbError_t err = VmbFeatureBoolGet(gVimbaHandle, "GeVTLIsPresent", &gigE);
-    if (VmbErrorSuccess == err) {
-        if (VmbBoolTrue == gigE) {
-            err = VmbFeatureCommandRun(gVimbaHandle, "GeVDiscoveryAllOnce");
-        }
-    }
-    if (VmbErrorSuccess == err) {
-        err = VmbCamerasList(NULL, 0, &count, sizeof (*cameras) );
-        g_message("Found %d cameras", count);
-        if (VmbErrorSuccess == err) {
-            cameras = (VmbCameraInfo_t*) malloc(count * sizeof (*cameras) );
-            err = VmbCamerasList(cameras, count, &count, sizeof (*cameras) );
-            g_message("Found the following cameras:\n");
-            for (i = 0; i < count; ++i) {
-                g_message("\t%s\n", cameras[i].cameraIdString);
-            }
-            free(cameras);
-        }
-    }
-    g_mutex_unlock(&src->config_lock);
-    return TRUE;
-}
-
-gboolean
-gst_vimba_src_init_config(GstVimbaSrc * src) {
-    gboolean res = TRUE;
-    g_mutex_lock(&src->config_lock);
-    if (!VmbFeatureIntGet(
-        src->config->camera_handle,
-        "HeightMax",
-        &(src->config->max_height)
-    )) {
-        res = FALSE;
-    };
-    if (!VmbFeatureIntGet(
-        src->config->camera_handle,
-        "WidthMax",
-        &(src->config->max_width)
-    )) {
-        res = FALSE;
-    };
-    if (!VmbFeatureIntGet(
-        src->config->camera_handle,
-        "Width",
-        &(src->config->width)
-    )) {
-        res = FALSE;
-    };
-    if (!VmbFeatureIntGet(
-        src->config->camera_handle,
-        "Height",
-        &(src->config->height)
-    )) {
-        res = FALSE;
-    };
-    if (!VmbFeatureEnumGet(
-        src->config->camera_handle,
-        "PixelFormat",
-        &(src->config->format)
-    )) {
-        res = FALSE;
-    }
-
-    VmbUint32_t i;
-    VmbError_t err = VmbFeatureEnumRangeQuery(
-        src->config->camera_handle,
-        "PixelFormat",
-        src->config->supported_formats,
-        GST_VIMBA_SRC_MAXFORMATS,
-        &(src->config->format_count)
-    );
-//    if (VmbErrorSuccess == err) {
-//        for (i = 0; i < src->config->format_count; i++) {
-//            g_message("%s", src->config->supported_formats[i]);
-//        }
-//    }
-//
-    g_message(
-        "camera configuration: width: %lu, height: %lu, format: %s",
-        (unsigned long) src->config->width,
-        (unsigned long) src->config->height,
-        src->config->format
-    );
-    g_mutex_unlock(&src->config_lock);
-    return res;
-}
-
-gboolean
-gst_vimba_src_open_camera(GstVimbaSrc * src) {
-    VmbError_t err;
-    VmbInt64_t size;
-
-    g_mutex_lock(&src->config_lock);
-    if (src->config->camera_id == NULL) {
-        GST_ERROR("You need to specify a camera id!");
-        return FALSE;
-    }
-    g_message("opening camera %s", src->config->camera_id);
-
-    err = VmbCameraOpen(
-        src->config->camera_id,
-        VmbAccessModeFull,
-        &(src->config->camera_handle)
-    );
-
-    err = VmbFeatureIntGet(
-        src->config->camera_handle,
-        "PayloadSize",
-         &size
-    );
-
-    src->config->frame.buffer = malloc(size * sizeof(char));
-    src->config->frame.bufferSize = size;
-
-    VmbFrameAnnounce(
-        src->config->camera_handle,
-        &src->config->frame,
-        sizeof(VmbFrame_t)
-    );
-    g_mutex_unlock(&src->config_lock);
-
-    if (VmbErrorSuccess == err) {
-        g_message("success!");
-        gst_vimba_src_init_config(src);
-    } else if (VmbErrorNotFound == err) {
-        g_error("Camera %s not found", src->config->camera_id);
-    } else if (VmbErrorInvalidAccess == err) {
-        g_error("Cannot acces camera");
-    }
-
-    return TRUE;
-}
-
-gboolean
-gst_vimba_src_close_camera(GstVimbaSrc * src) {
-    VmbError_t err;
-    g_mutex_lock(&src->config_lock);
-    err = VmbCameraClose(src->config->camera_handle);
-    g_mutex_unlock(&src->config_lock);
-    if (err != VmbErrorSuccess) {
-        return FALSE;
-    }
-    return TRUE;
-}
 
 /* These are normally defined by the GStreamer build system.
    If you are creating an element to be included in gst-plugins-*,
