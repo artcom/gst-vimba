@@ -55,23 +55,10 @@ static void gst_vimba_src_dispose (GObject * object);
 static void gst_vimba_src_finalize (GObject * object);
 
 static GstCaps *gst_vimba_src_get_caps (GstBaseSrc * src, GstCaps * filter);
-static gboolean gst_vimba_src_negotiate (GstBaseSrc * src);
-static GstCaps *gst_vimba_src_fixate (GstBaseSrc * src, GstCaps * caps);
 static gboolean gst_vimba_src_set_caps (GstBaseSrc * src, GstCaps * caps);
-static gboolean gst_vimba_src_decide_allocation (GstBaseSrc * src,
-        GstQuery * query);
 static gboolean gst_vimba_src_start (GstBaseSrc * src);
 static gboolean gst_vimba_src_stop (GstBaseSrc * src);
-static void gst_vimba_src_get_times (GstBaseSrc * src, GstBuffer * buffer,
-        GstClockTime * start, GstClockTime * end);
-static gboolean gst_vimba_src_get_size (GstBaseSrc * src, guint64 * size);
-static gboolean gst_vimba_src_unlock (GstBaseSrc * src);
-static gboolean gst_vimba_src_unlock_stop (GstBaseSrc * src);
-static gboolean gst_vimba_src_query (GstBaseSrc * src, GstQuery * query);
-static gboolean gst_vimba_src_event (GstBaseSrc * src, GstEvent * event);
 static GstFlowReturn gst_vimba_src_create (GstPushSrc * src, GstBuffer **buf);
-//static GstFlowReturn gst_vimba_src_alloc (GstPushSrc * src, GstBuffer **buf);
-//static GstFlowReturn gst_vimba_src_fill (GstPushSrc * src, GstBuffer *buf);
 
 enum
 {
@@ -134,21 +121,10 @@ gst_vimba_src_class_init (GstVimbaSrcClass * klass)
     gobject_class->dispose = gst_vimba_src_dispose;
     gobject_class->finalize = gst_vimba_src_finalize;
     base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_vimba_src_get_caps);
-//    base_src_class->negotiate = GST_DEBUG_FUNCPTR (gst_vimba_src_negotiate);
-//    base_src_class->fixate = GST_DEBUG_FUNCPTR (gst_vimba_src_fixate);
     base_src_class->set_caps = GST_DEBUG_FUNCPTR (gst_vimba_src_set_caps);
-//    base_src_class->decide_allocation = GST_DEBUG_FUNCPTR (gst_vimba_src_decide_allocation);
     base_src_class->start = GST_DEBUG_FUNCPTR (gst_vimba_src_start);
     base_src_class->stop = GST_DEBUG_FUNCPTR (gst_vimba_src_stop);
-//    base_src_class->get_times = GST_DEBUG_FUNCPTR (gst_vimba_src_get_times);
-//    base_src_class->get_size = GST_DEBUG_FUNCPTR (gst_vimba_src_get_size);
-//    base_src_class->unlock = GST_DEBUG_FUNCPTR (gst_vimba_src_unlock);
-//    base_src_class->unlock_stop = GST_DEBUG_FUNCPTR (gst_vimba_src_unlock_stop);
-//    base_src_class->query = GST_DEBUG_FUNCPTR (gst_vimba_src_query);
-//    base_src_class->event = GST_DEBUG_FUNCPTR (gst_vimba_src_event);
     push_src_class->create = GST_DEBUG_FUNCPTR (gst_vimba_src_create);
-//    push_src_class->alloc = GST_DEBUG_FUNCPTR (gst_vimba_src_alloc);
-//    push_src_class->fill = GST_DEBUG_FUNCPTR (gst_vimba_src_fill);
 
     /* define properties */
     g_object_class_install_property(
@@ -204,6 +180,8 @@ gst_vimba_src_set_property (GObject * object, guint property_id,
                         (unsigned long) vimbasrc->camera->height,
                         vimbasrc->camera->format
                     );
+                } else {
+                    g_error("cannot fetch initial camera settings");
                 }
             }
             g_mutex_unlock(&vimbasrc->config_lock);
@@ -312,50 +290,31 @@ gst_vimba_src_get_caps (GstBaseSrc * src, GstCaps * filter)
     return caps;
 }
 
-/* decide on caps */
-static gboolean
-gst_vimba_src_negotiate (GstBaseSrc * src)
-{
-    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
-
-    GST_DEBUG_OBJECT (vimbasrc, "negotiate");
-
-    return TRUE;
-}
-
-/* called if, in negotiation, caps need fixating */
-static GstCaps *
-gst_vimba_src_fixate (GstBaseSrc * src, GstCaps * caps)
-{
-    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
-
-    GST_DEBUG_OBJECT (vimbasrc, "fixate");
-
-    return NULL;
-}
-
 /* notify the subclass of new caps */
 static gboolean
 gst_vimba_src_set_caps (GstBaseSrc * src, GstCaps * caps)
 {
     g_message("gst_vimba_src_set_caps");
 
+
     GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
     GstVideoInfo info;
-    GstVideoFormat format;
-    GstStructure *structure;
+//    GstVideoFormat format;
+//    GstStructure *structure;
+//
+    vimbacamera_stop(vimbasrc->camera);
 
     g_message("Negotiated Caps: %s", gst_caps_to_string(caps));
 
     if (!gst_video_info_from_caps(&info, caps)) {
         return FALSE;
     }
-    structure = gst_caps_get_structure(caps, 0);
+//    structure = gst_caps_get_structure(caps, 0);
     g_mutex_lock(&vimbasrc->config_lock);
 
     vimbasrc->camera->width = info.width;
     vimbasrc->camera->height = info.height;
-    format = info.finfo->format;
+//    format = info.finfo->format;
 
     /* also set selected caps on the camera */
     VmbFeatureIntSet(vimbasrc->camera->camera_handle, "Width",
@@ -372,16 +331,7 @@ gst_vimba_src_set_caps (GstBaseSrc * src, GstCaps * caps)
     g_mutex_unlock(&vimbasrc->config_lock);
     GST_DEBUG_OBJECT (vimbasrc, "set_caps");
 
-    return TRUE;
-}
-
-/* setup allocation query */
-static gboolean
-gst_vimba_src_decide_allocation (GstBaseSrc * src, GstQuery * query)
-{
-    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
-
-    GST_DEBUG_OBJECT (vimbasrc, "decide_allocation");
+    vimbacamera_start(vimbasrc->camera);
 
     return TRUE;
 }
@@ -393,13 +343,7 @@ gst_vimba_src_start (GstBaseSrc * src)
     gboolean res = TRUE;
     GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
-    g_mutex_lock(&vimbasrc->config_lock);
-    if (vimbacamera_start(vimbasrc->camera)) {
-        g_message("Aquisition started");
-    } else {
-        g_error("Failed to start aquisition");
-    }
-    g_mutex_unlock(&vimbasrc->config_lock);
+    vimbacamera_start(vimbasrc->camera);
 
     GST_DEBUG_OBJECT (vimbasrc, "start");
 
@@ -412,85 +356,11 @@ gst_vimba_src_stop (GstBaseSrc * src)
     gboolean res = TRUE;
     GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
-    g_mutex_lock(&vimbasrc->config_lock);
-    if (vimbacamera_stop(vimbasrc->camera)) {
-        g_message("Aquisition stopped");
-    } else {
-        g_error("Failed to stop aquisition");
-    }
-    g_mutex_unlock(&vimbasrc->config_lock);
+    vimbacamera_stop(vimbasrc->camera);
 
     GST_DEBUG_OBJECT (vimbasrc, "stop");
 
     return res;
-}
-
-/* given a buffer, return start and stop time when it should be pushed
- * out. The base class will sync on the clock using these times. */
-static void
-gst_vimba_src_get_times (GstBaseSrc * src, GstBuffer * buffer,
-        GstClockTime * start, GstClockTime * end)
-{
-    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
-
-    GST_DEBUG_OBJECT (vimbasrc, "get_times");
-
-}
-
-/* get the total size of the resource in bytes */
-static gboolean
-gst_vimba_src_get_size (GstBaseSrc * src, guint64 * size)
-{
-    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
-
-    GST_DEBUG_OBJECT (vimbasrc, "get_size");
-
-    return TRUE;
-}
-
-/* unlock any pending access to the resource. subclasses should unlock
- * any function ASAP. */
-static gboolean
-gst_vimba_src_unlock (GstBaseSrc * src)
-{
-    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
-
-    GST_DEBUG_OBJECT (vimbasrc, "unlock");
-
-    return TRUE;
-}
-
-/* Clear any pending unlock request, as we succeeded in unlocking */
-static gboolean
-gst_vimba_src_unlock_stop (GstBaseSrc * src)
-{
-    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
-
-    GST_DEBUG_OBJECT (vimbasrc, "unlock_stop");
-
-    return TRUE;
-}
-
-/* notify subclasses of a query */
-static gboolean
-gst_vimba_src_query (GstBaseSrc * src, GstQuery * query)
-{
-    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
-
-    GST_DEBUG_OBJECT (vimbasrc, "query");
-
-    return TRUE;
-}
-
-/* notify subclasses of an event */
-static gboolean
-gst_vimba_src_event (GstBaseSrc * src, GstEvent * event)
-{
-    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
-
-    GST_DEBUG_OBJECT (vimbasrc, "event");
-
-    return TRUE;
 }
 
 /* ask the subclass to create a buffer with offset and size, the default
@@ -499,30 +369,45 @@ static GstFlowReturn
 gst_vimba_src_create (GstPushSrc * src, GstBuffer ** bufp)
 {
     GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
-    GstClockTime gst_pts = GST_CLOCK_TIME_NONE;
-    GstBuffer *buf;
+//    GstClockTime gst_pts = GST_CLOCK_TIME_NONE;
+    GstBuffer *buf = NULL;
     GstFlowReturn ret = GST_FLOW_ERROR;
     int i;
 
+    /* FIXME:
+     *
+     * From the docs:
+     * Live source elements must place a timestamp in each buffer that they
+     * deliver.  They must choose the timestamps and the values of the SEGMENT
+     * event in such a way that the running-time of the buffer matches exactly
+     * the running-time of the pipeline clock when the first byte in the buffer
+     * was captured.
+     *
+     * checkout this cam source:
+     * https://github.com/thaytan/gst-rpicamsrc
+     *
+     */
+
     g_mutex_lock(&vimbasrc->config_lock);
-    VmbFrame_t next_frame;
+
     for (i = 0; i < VIMBA_FRAME_COUNT; i++) {
         if (VmbFrameStatusComplete == vimbasrc->camera->frames[i].receiveStatus)  {
-            next_frame = vimbasrc->camera->frames[i];
+            buf = gst_buffer_new_allocate(NULL, vimbasrc->camera->frames[i].bufferSize, NULL);
+            if (buf) {
+                /* FIXME: set the correct timestamp! */
+                //GST_BUFFER_PTS(buf) = gst_pts;
+                gst_buffer_fill(
+                    buf, 0,
+                    vimbasrc->camera->frames[i].buffer,
+                    vimbasrc->camera->frames[i].bufferSize
+                );
+                ret = GST_FLOW_OK;
+            }
             break;
         }
     }
-    buf = gst_buffer_new_allocate(NULL, next_frame.bufferSize, NULL);
-    if (buf) {
-        GST_BUFFER_PTS(buf) = gst_pts;
-        gst_buffer_fill(
-            buf, 0,
-            next_frame.buffer,
-            next_frame.bufferSize
-        );
-        *bufp = buf;
-        ret = GST_FLOW_OK;
-    }
+
+    *bufp = buf;
     g_mutex_unlock(&vimbasrc->config_lock);
 
     GST_DEBUG_OBJECT (vimbasrc, "create");
@@ -530,29 +415,6 @@ gst_vimba_src_create (GstPushSrc * src, GstBuffer ** bufp)
     return ret;
 }
 
-///* ask the subclass to allocate an output buffer. The default implementation
-// * will use the negotiated allocator. */
-//static GstFlowReturn
-//gst_vimba_src_alloc (GstPushSrc * src, GstBuffer ** buf)
-//{
-//    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
-//
-//    GST_DEBUG_OBJECT (vimbasrc, "alloc");
-//
-//    return GST_FLOW_OK;
-//}
-//
-///* ask the subclass to fill the buffer with data from offset and size */
-//static GstFlowReturn
-//gst_vimba_src_fill (GstPushSrc * src, GstBuffer * buf)
-//{
-//    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
-//
-//    GST_DEBUG_OBJECT (vimbasrc, "fill");
-//
-//    return GST_FLOW_OK;
-//}
-//
 static gboolean
 plugin_init (GstPlugin * plugin)
 {
