@@ -270,7 +270,7 @@ gst_vimba_src_get_caps (GstBaseSrc * src, GstCaps * filter)
     gst_structure_set(raw,
         "width",  GST_TYPE_INT_RANGE, 1, vimbasrc->camera->max_width,
         "height", GST_TYPE_INT_RANGE, 1, vimbasrc->camera->max_height,
-        "format", G_TYPE_STRING, "BGRx",
+        "format", G_TYPE_STRING, "BGR",
         "framerate", GST_TYPE_FRACTION, 1, 30,
         NULL
     );
