@@ -372,7 +372,6 @@ gst_vimba_src_create (GstPushSrc * src, GstBuffer ** bufp)
     GstClockTime base_time, timestamp = GST_CLOCK_TIME_NONE;
     GstBuffer *buf = NULL;
     GstFlowReturn ret = GST_FLOW_ERROR;
-    int i;
 
     /* obtain element clock and base time */
     GST_OBJECT_LOCK(src);
@@ -382,34 +381,24 @@ gst_vimba_src_create (GstPushSrc * src, GstBuffer ** bufp)
     base_time = GST_ELEMENT_CAST (src)->base_time;
     GST_OBJECT_UNLOCK(src);
 
-    VimbaCamera* camera = vimbasrc->camera;
-
-    g_mutex_lock(&vimbasrc->config_lock);
-
-    for (i = 0; i < VIMBA_FRAME_COUNT; i++) {
-        if (VmbFrameStatusComplete == camera->frames[i].receiveStatus)  {
-
-            VmbFrame_t * frame = &camera->frames[i];
-
+    VmbFrame_t * frame = vimbacamera_next_frame();
+    if (frame) {
+        buf = gst_buffer_new_allocate(NULL, frame->bufferSize, NULL);
+        if (buf) {
             timestamp = gst_clock_get_time(clock) - base_time;
-
-            buf = gst_buffer_new_allocate(NULL, frame->bufferSize, NULL);
-            if (buf) {
-                GST_BUFFER_DTS(buf) = timestamp;
-                GST_BUFFER_PTS(buf) = GST_BUFFER_DTS(buf);
-                gst_buffer_fill(
-                    buf, 0,
-                    frame->buffer,
-                    frame->bufferSize
-                );
-                ret = GST_FLOW_OK;
-            }
-            break;
+            GST_BUFFER_DTS(buf) = timestamp;
+            GST_BUFFER_PTS(buf) = GST_BUFFER_DTS(buf);
+            gst_buffer_memset(buf, 0, 111 * rand(), frame->bufferSize);
+            gst_buffer_fill(
+                buf, 0,
+                frame->buffer,
+                frame->bufferSize
+            );
+            vimbacamera_queue_frame(vimbasrc->camera, frame);
         }
+        ret = GST_FLOW_OK;
+        *bufp = buf;
     }
-
-    *bufp = buf;
-    g_mutex_unlock(&vimbasrc->config_lock);
 
     if (clock) {
         gst_object_unref(clock);

@@ -3,21 +3,31 @@
 #include "vimbacamera.h"
 
 void VMB_CALL frame_callback( const VmbHandle_t camera_handle, VmbFrame_t * frame) {
-//    if (VmbFrameStatusComplete == frame->receiveStatus) {
-//        g_message("Frame successfully received");
-//    } else {
-//        g_message("Error receiving frame");
-//    }
-    VmbCaptureFrameQueue(camera_handle, frame, &frame_callback);
+    if (VmbFrameStatusComplete == frame->receiveStatus) {
+        g_async_queue_push(frame_queue, frame);
+    } else {
+        g_message("Error receiving frame");
+    }
 }
 
+VmbFrame_t * vimbacamera_next_frame() {
+    return (VmbFrame_t *)g_async_queue_pop(frame_queue);
+}
+
+void vimbacamera_queue_frame (VimbaCamera * camera, VmbFrame_t * frame) {
+    VmbCaptureFrameQueue(camera->camera_handle, frame, &frame_callback);
+}
+
+
 VimbaCamera* vimbacamera_init() {
+    frame_queue = g_async_queue_new();
     VimbaCamera* camera = malloc(sizeof(VimbaCamera));
     camera->started = FALSE;
     return camera;
 }
 
 void vimbacamera_destroy (VimbaCamera * camera) {
+    g_async_queue_unref(frame_queue);
     if (camera) {
         free(camera);
     }

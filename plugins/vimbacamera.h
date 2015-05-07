@@ -5,7 +5,10 @@
 #include "gst/gst.h"
 
 #define GST_VIMBA_SRC_MAXFORMATS 64
-#define VIMBA_FRAME_COUNT 2
+#define VIMBA_FRAME_COUNT 5
+
+/* global frame queue with completed frames */
+GAsyncQueue* frame_queue;
 
 typedef struct _VimbaCamera VimbaCamera;
 struct _VimbaCamera {
@@ -25,12 +28,14 @@ struct _VimbaCamera {
 };
 
 VimbaCamera* vimbacamera_init();
-void     vimbacamera_destroy (VimbaCamera * camera);
-gboolean vimbacamera_open (VimbaCamera * camera);
-gboolean vimbacamera_close (VimbaCamera * camera);
-gboolean vimbacamera_load (VimbaCamera * camera);
-gboolean vimbacamera_start (VimbaCamera * camera);
-gboolean vimbacamera_stop (VimbaCamera * camera);
-void vimbacamera_capture (VimbaCamera * camera);
+void         vimbacamera_destroy (VimbaCamera * camera);
+gboolean     vimbacamera_open (VimbaCamera * camera);
+gboolean     vimbacamera_close (VimbaCamera * camera);
+gboolean     vimbacamera_load (VimbaCamera * camera);
+gboolean     vimbacamera_start (VimbaCamera * camera);
+gboolean     vimbacamera_stop (VimbaCamera * camera);
+void         vimbacamera_capture (VimbaCamera * camera);
+VmbFrame_t * vimbacamera_next_frame ();
+void         vimbacamera_queue_frame (VimbaCamera * camera, VmbFrame_t * frame);
 
 #endif
