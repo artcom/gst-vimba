@@ -150,6 +150,9 @@ gboolean vimbacamera_start (VimbaCamera * camera) {
     VmbError_t err;
     int i;
 
+    /* Reset base time (should be set when reading the first frame) */
+    camera->base_time = 0;
+
     err = VmbFeatureEnumSet(camera->camera_handle, "AcquisitionMode", "Continuous");
 
     /* Create and announce frame buffers */

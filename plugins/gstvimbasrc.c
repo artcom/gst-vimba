@@ -53,7 +53,6 @@ static void gst_vimba_src_get_property (GObject * object,
         guint property_id, GValue * value, GParamSpec * pspec);
 static void gst_vimba_src_dispose (GObject * object);
 static void gst_vimba_src_finalize (GObject * object);
-
 static GstCaps *gst_vimba_src_get_caps (GstBaseSrc * src, GstCaps * filter);
 static gboolean gst_vimba_src_set_caps (GstBaseSrc * src, GstCaps * caps);
 static gboolean gst_vimba_src_start (GstBaseSrc * src);
@@ -369,37 +368,39 @@ static GstFlowReturn
 gst_vimba_src_create (GstPushSrc * src, GstBuffer ** bufp)
 {
     GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
-//    GstClockTime gst_pts = GST_CLOCK_TIME_NONE;
+    GstClock * clock = NULL;
+    GstClockTime base_time, timestamp = GST_CLOCK_TIME_NONE;
     GstBuffer *buf = NULL;
     GstFlowReturn ret = GST_FLOW_ERROR;
     int i;
 
-    /* FIXME:
-     *
-     * From the docs:
-     * Live source elements must place a timestamp in each buffer that they
-     * deliver.  They must choose the timestamps and the values of the SEGMENT
-     * event in such a way that the running-time of the buffer matches exactly
-     * the running-time of the pipeline clock when the first byte in the buffer
-     * was captured.
-     *
-     * checkout this cam source:
-     * https://github.com/thaytan/gst-rpicamsrc
-     *
-     */
+    /* obtain element clock and base time */
+    GST_OBJECT_LOCK(src);
+    if ((clock = GST_ELEMENT_CLOCK(src)) != NULL) {
+        gst_object_ref(clock);
+    }
+    base_time = GST_ELEMENT_CAST (src)->base_time;
+    GST_OBJECT_UNLOCK(src);
+
+    VimbaCamera* camera = vimbasrc->camera;
 
     g_mutex_lock(&vimbasrc->config_lock);
 
     for (i = 0; i < VIMBA_FRAME_COUNT; i++) {
-        if (VmbFrameStatusComplete == vimbasrc->camera->frames[i].receiveStatus)  {
-            buf = gst_buffer_new_allocate(NULL, vimbasrc->camera->frames[i].bufferSize, NULL);
+        if (VmbFrameStatusComplete == camera->frames[i].receiveStatus)  {
+
+            VmbFrame_t * frame = &camera->frames[i];
+
+            timestamp = gst_clock_get_time(clock) - base_time;
+
+            buf = gst_buffer_new_allocate(NULL, frame->bufferSize, NULL);
             if (buf) {
-                /* FIXME: set the correct timestamp! */
-                //GST_BUFFER_PTS(buf) = gst_pts;
+                GST_BUFFER_DTS(buf) = timestamp;
+                GST_BUFFER_PTS(buf) = GST_BUFFER_DTS(buf);
                 gst_buffer_fill(
                     buf, 0,
-                    vimbasrc->camera->frames[i].buffer,
-                    vimbasrc->camera->frames[i].bufferSize
+                    frame->buffer,
+                    frame->bufferSize
                 );
                 ret = GST_FLOW_OK;
             }
@@ -409,6 +410,10 @@ gst_vimba_src_create (GstPushSrc * src, GstBuffer ** bufp)
 
     *bufp = buf;
     g_mutex_unlock(&vimbasrc->config_lock);
+
+    if (clock) {
+        gst_object_unref(clock);
+    }
 
     GST_DEBUG_OBJECT (vimbasrc, "create");
 

@@ -5,7 +5,7 @@
 #include "gst/gst.h"
 
 #define GST_VIMBA_SRC_MAXFORMATS 64
-#define VIMBA_FRAME_COUNT 3
+#define VIMBA_FRAME_COUNT 2
 
 typedef struct _VimbaCamera VimbaCamera;
 struct _VimbaCamera {
@@ -20,6 +20,7 @@ struct _VimbaCamera {
     const char*  format;
     const char*  supported_formats[GST_VIMBA_SRC_MAXFORMATS];
     VmbUint32_t  format_count;
+    VmbUint64_t  base_time;
     gboolean     started;
 };
 
