@@ -308,7 +308,7 @@ gst_vimba_src_get_caps (GstBaseSrc * src, GstCaps * filter)
     );
     bayer = gst_structure_copy(raw);
 
-    gst_structure_set_value(raw, "format", &raw_format_list);
+    gst_structure_set_value(raw,   "format", &raw_format_list);
     gst_structure_set_value(bayer, "format", &bayer_format_list);
 
     g_message("caps: %s", gst_caps_to_string(caps));
@@ -350,11 +350,12 @@ gst_vimba_src_set_caps (GstBaseSrc * src, GstCaps * caps)
     VmbFeatureIntSet(vimbasrc->camera->camera_handle, "Height",
         vimbasrc->camera->height
     );
+    const char * format = gst_structure_get_string(structure, "format");
     /* Set capability from fomat */
     if (strcmp(gst_structure_get_name(structure),"video/x-bayer") == 0) {
-        vimbasrc->camera->format = vimbasrc_gstreamer_to_vimba_bayer(info.finfo->name);
+        vimbasrc->camera->format = vimbasrc_gstreamer_to_vimba_bayer(format);
     } else {
-        vimbasrc->camera->format = vimbasrc_gstreamer_to_vimba_raw(info.finfo->name);
+        vimbasrc->camera->format = vimbasrc_gstreamer_to_vimba_raw(format);
     }
     g_message("Setting camera format: %s", vimbasrc->camera->format);
     VmbFeatureEnumSet(vimbasrc->camera->camera_handle, "PixelFormat",
