@@ -38,7 +38,7 @@ gboolean     vimbacamera_load (VimbaCamera * camera);
 gboolean     vimbacamera_start (VimbaCamera * camera);
 gboolean     vimbacamera_stop (VimbaCamera * camera);
 void         vimbacamera_capture (VimbaCamera * camera);
-VmbFrame_t * vimbacamera_next_frame ();
+VmbFrame_t * vimbacamera_consume_frame ();
 void         vimbacamera_queue_frame (VimbaCamera * camera, VmbFrame_t * frame);
 
 #endif

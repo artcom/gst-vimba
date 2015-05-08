@@ -4,23 +4,26 @@
 
 void VMB_CALL frame_callback( const VmbHandle_t camera_handle, VmbFrame_t * frame) {
     if (VmbFrameStatusComplete == frame->receiveStatus) {
+        /*g_message("Frame received %lu", (unsigned long int)frame->frameID);*/
         g_async_queue_push(frame_queue, frame);
     } else {
-        g_message("Error receiving frame");
+        g_message("Error receiving frame %lu", (unsigned long int) frame->frameID);
     }
 }
 
-VmbFrame_t * vimbacamera_next_frame() {
-    return (VmbFrame_t *)g_async_queue_pop(frame_queue);
+VmbFrame_t * vimbacamera_consume_frame() {
+    VmbFrame_t * frame = g_async_queue_pop(frame_queue);
+    /*g_message("Frame consumed %lu", (unsigned long int) frame->frameID);*/
+    return frame;
 }
 
 void vimbacamera_queue_frame (VimbaCamera * camera, VmbFrame_t * frame) {
+    /*g_message("queuing frame %lu", (unsigned long int) frame->frameID);*/
     VmbCaptureFrameQueue(camera->camera_handle, frame, &frame_callback);
 }
 
 
 VimbaCamera* vimbacamera_init() {
-    frame_queue = g_async_queue_new();
     VimbaCamera* camera = malloc(sizeof(VimbaCamera));
     camera->started = FALSE;
     return camera;
@@ -84,8 +87,7 @@ void print_feature_error(VmbError_t err) {
 gboolean vimbacamera_load (VimbaCamera * camera) {
     g_message("Loading camera data for camera %s", camera->camera_id);
     gboolean res = TRUE;
-    VmbError_t err;
-    err = VmbFeatureIntGet(
+    VmbFeatureIntGet(
         camera->camera_handle,
         "HeightMax",
         &(camera->max_height)
@@ -141,6 +143,19 @@ gboolean vimbacamera_load (VimbaCamera * camera) {
         "AcquisitionFrameRateAbs",
         &camera->framerate
     );
+    g_message(
+        "Current camera configuration:\n \
+        \tMaxWidth:\t\t%lu\n \
+        \tMaxHeight:\t\t%lu\n \
+        \tWidth:\t\t\t%lu\n \
+        \tHeight:\t\t\t%lu\n \
+        \tFormat:\t\t\t%s",
+        (unsigned long int) camera->max_width,
+        (unsigned long int) camera->max_height,
+        (unsigned long int) camera->width,
+        (unsigned long int) camera->height,
+        camera->format
+    );
     return res;
 }
 
@@ -157,7 +172,8 @@ gboolean vimbacamera_start (VimbaCamera * camera) {
     /* Reset base time (should be set when reading the first frame) */
     camera->base_time = 0;
 
-    err = VmbFeatureEnumSet(camera->camera_handle, "AcquisitionMode", "Continuous");
+    /* Create global frame queue that's going to be used by gstreamer */
+    frame_queue = g_async_queue_new();
 
     /* Create and announce frame buffers */
     err = VmbFeatureIntGet(
@@ -169,18 +185,13 @@ gboolean vimbacamera_start (VimbaCamera * camera) {
     /* create and announce frame buffers */
     for (i = 0; i < VIMBA_FRAME_COUNT; i++) {
         camera->frames[i].buffer = (unsigned char*)malloc((VmbUint32_t)camera->payload_size);
+        memset(camera->frames[i].buffer, 22*i, camera->payload_size);
         camera->frames[i].bufferSize = (VmbUint32_t)camera->payload_size;
-        VmbFrameAnnounce(
-            camera->camera_handle,
-            &camera->frames[i],
-            (VmbUint32_t)sizeof(VmbFrame_t)
-        );
-        if ( VmbErrorSuccess != err )
-        {
-            free( camera->frames[i].buffer );
-            memset( &camera->frames[i], 0, sizeof( VmbFrame_t ));
-            break;
-        }
+//        VmbFrameAnnounce(
+//            camera->camera_handle,
+//            &camera->frames[i],
+//            sizeof(VmbFrame_t)
+//        );
     }
 
     /* Start capture engine */
@@ -226,6 +237,8 @@ gboolean vimbacamera_stop (VimbaCamera * camera) {
     VmbCaptureQueueFlush(camera->camera_handle);
     VmbCaptureEnd(camera->camera_handle);
     VmbFrameRevokeAll(camera->camera_handle);
+
+    g_async_queue_unref(frame_queue);
 
     int i;
     for (i = 0; i < VIMBA_FRAME_COUNT; i++) {
