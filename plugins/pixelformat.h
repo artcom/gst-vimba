@@ -1,4 +1,8 @@
+#ifndef _VIMBASRC_PIXELFORMAT_H_
+#define _VIMBASRC_PIXELFORMAT_H_
+
 #include <string.h>
+#include <stdlib.h>
 
 enum VimbaRawFormats
 {
@@ -14,28 +18,6 @@ enum VimbaRawFormats
 };
 typedef enum VimbaRawFormats VimbaFormat_t;
 
-const char* GST_RAW_FORMATS[RAW_FORMAT_COUNT] = {
-    "GRAY8",
-    "RGBx",
-    "BGRx",
-    "RGBA",
-    "BGRA",
-    "Y41P",
-    "YUY2",
-    "IYU2"
-};
-
-const char* VIMBA_RAW_FORMATS[RAW_FORMAT_COUNT] = {
-    "Mono8",
-    "RGB8Packed",
-    "BGR8Packed",
-    "RGBA8Packed",
-    "BGRA8Packed",
-    "YUV411Packed",
-    "YUV422Packed",
-    "YUV444Packed"
-};
-
 enum VimbaBayerFormats
 {
     BAYERGB8,
@@ -46,80 +28,35 @@ enum VimbaBayerFormats
 };
 typedef enum VimbaBayerFormats VimbaBayerFormat_t;
 
-const char * GST_BAYER_FORMATS[BAYER_FORMAT_COUNT] = {
-    "gbrg",
-    "rggb",
-    "grbg",
-    "bggr"
-};
+void vimbasrc_supported_formats(
+    const char ** camera_formats,
+    int length,
+    const char ** supported_formats,
+    int format_count,
+    const char ** output,
+    int * output_length
+);
+void vimbasrc_supported_raw_formats(
+    const char ** camera_formats,
+    int length,
+    const char ** output,
+    int * output_length
+);
+void vimbasrc_supported_bayer_formats(
+    const char ** camera_formats,
+    int length,
+    const char ** output,
+    int * output_length
+);
+const char* vimbasrc_match_formats(
+    const char * format,
+    const char ** input_list,
+    const char** output_list,
+    int length
+);
+const char* vimbasrc_gstreamer_to_vimba_bayer(const char * format);
+const char* vimbasrc_vimba_to_gstreamer_bayer(const char * format);
+const char* vimbasrc_gstreamer_to_vimba_raw(const char * format);
+const char* vimbasrc_vimba_to_gstreamer_raw(const char * format);
 
-const char * VIMBA_BAYER_FORMATS[BAYER_FORMAT_COUNT] = {
-    "BayerGB8",
-    "BayerRG8",
-    "BayerGR8",
-    "BayerBG8"
-};
-
-int 
-vimbasrc_is_bayer(const char * input_format, const char ** format_list) {
-    int i;
-    for (i = 0; i < BAYER_FORMAT_COUNT; i++) {
-        if (strcmp(input_format, format_list[i])) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-const char*
-vimbasrc_match_formats(const char * format, const char ** input_list,
-        const char** output_list, int length) 
-{
-    int i;
-    for (i = 0; i < length; i++) {
-        if (strcmp(format, input_list[i])) {
-            return output_list[i];
-        }
-    }
-    return NULL;
-}
-
-const char*
-vimbasrc_gstreamer_to_vimba_bayer(const char * format) {
-    return vimbasrc_match_formats(
-        format,
-        GST_BAYER_FORMATS,
-        VIMBA_BAYER_FORMATS,
-        BAYER_FORMAT_COUNT
-    );
-}
-
-const char*
-vimbasrc_vimba_to_gstreamer_bayer(const char * format) {
-    return vimbasrc_match_formats(
-        format,
-        VIMBA_BAYER_FORMATS,
-        GST_BAYER_FORMATS,
-        BAYER_FORMAT_COUNT
-    );
-}
-
-const char*
-vimbasrc_gstreamer_to_vimba_raw(const char * format) {
-    return vimbasrc_match_formats(
-        format,
-        GST_RAW_FORMATS,
-        VIMBA_RAW_FORMATS,
-        RAW_FORMAT_COUNT
-    );
-}
-
-const char*
-vimbasrc_vimba_to_gstreamer_raw(const char * format) {
-    return vimbasrc_match_formats(
-        format,
-        VIMBA_RAW_FORMATS,
-        GST_RAW_FORMATS,
-        RAW_FORMAT_COUNT
-    );
-}
+#endif

@@ -254,14 +254,44 @@ gst_vimba_src_get_caps (GstBaseSrc * src, GstCaps * filter)
     guint size = gst_caps_get_size(caps);
     g_message("num structures: %d", size );
 
-    /* FIXME:
+    /*
      * Fill both "Bayer" and "Raw" capability structures with available
      * formats from the camera.
      */
+    const char * raw_formats[GST_VIMBA_SRC_MAXFORMATS];
+    const char * bayer_formats[GST_VIMBA_SRC_MAXFORMATS];
+    int i, num_raw_formats = 0, num_bayer_formats = 0;
 
-    /* FIXME:
-     * Get framerate
-     */
+    GValue format = G_VALUE_INIT;
+    GValue raw_format_list   = G_VALUE_INIT;
+    GValue bayer_format_list = G_VALUE_INIT;
+    g_value_init(&format, G_TYPE_STRING);
+    g_value_init(&raw_format_list, GST_TYPE_LIST);
+    g_value_init(&bayer_format_list, GST_TYPE_LIST);
+
+    vimbasrc_supported_raw_formats(
+        vimbasrc->camera->supported_formats,
+        vimbasrc->camera->format_count,
+        raw_formats,
+        &num_raw_formats
+    );
+    for (i = 0; i < num_raw_formats; i++) {
+        const char * fstring = vimbasrc_vimba_to_gstreamer_raw(raw_formats[i]);
+        g_value_set_static_string(&format, fstring);
+        gst_value_list_append_value(&raw_format_list, &format);
+    }
+    vimbasrc_supported_bayer_formats(
+        vimbasrc->camera->supported_formats,
+        vimbasrc->camera->format_count,
+        bayer_formats,
+        &num_bayer_formats
+    );
+    for (i = 0; i < num_bayer_formats; i++) {
+        const char * fstring = vimbasrc_vimba_to_gstreamer_bayer(bayer_formats[i]);
+        g_value_set_static_string(&format, fstring);
+        gst_value_list_append_value(&bayer_format_list, &format);
+    }
+    g_value_unset(&format);
 
     GstStructure *bayer, *raw;
     raw   = gst_caps_get_structure(caps, 0);
@@ -270,16 +300,16 @@ gst_vimba_src_get_caps (GstBaseSrc * src, GstCaps * filter)
     gst_structure_set(raw,
         "width",  GST_TYPE_INT_RANGE, 1, vimbasrc->camera->max_width,
         "height", GST_TYPE_INT_RANGE, 1, vimbasrc->camera->max_height,
-        "format", G_TYPE_STRING, "BGR",
         "framerate", GST_TYPE_FRACTION, 1, 30,
+        /*"framerate", GST_TYPE_FRACTION_RANGE,*/
+        /*1, (int)vimbasrc->camera->min_framerate,*/
+        /*1, (int)vimbasrc->camera->max_framerate,*/
         NULL
     );
-    gst_structure_set(bayer,
-        "width",  GST_TYPE_INT_RANGE, 1, vimbasrc->camera->max_width,
-        "height", GST_TYPE_INT_RANGE, 1, vimbasrc->camera->max_height,
-        "format", G_TYPE_STRING, "grbg",
-        NULL
-    );
+    bayer = gst_structure_copy(raw);
+
+    gst_structure_set_value(raw, "format", &raw_format_list);
+    gst_structure_set_value(bayer, "format", &bayer_format_list);
 
     g_message("caps: %s", gst_caps_to_string(caps));
 
@@ -298,9 +328,8 @@ gst_vimba_src_set_caps (GstBaseSrc * src, GstCaps * caps)
 
     GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
     GstVideoInfo info;
-//    GstVideoFormat format;
-//    GstStructure *structure;
-//
+    GstStructure *structure;
+
     vimbacamera_stop(vimbasrc->camera);
 
     g_message("Negotiated Caps: %s", gst_caps_to_string(caps));
@@ -308,12 +337,11 @@ gst_vimba_src_set_caps (GstBaseSrc * src, GstCaps * caps)
     if (!gst_video_info_from_caps(&info, caps)) {
         return FALSE;
     }
-//    structure = gst_caps_get_structure(caps, 0);
+    structure = gst_caps_get_structure(caps, 0);
     g_mutex_lock(&vimbasrc->config_lock);
 
     vimbasrc->camera->width = info.width;
     vimbasrc->camera->height = info.height;
-//    format = info.finfo->format;
 
     /* also set selected caps on the camera */
     VmbFeatureIntSet(vimbasrc->camera->camera_handle, "Width",
@@ -322,9 +350,15 @@ gst_vimba_src_set_caps (GstBaseSrc * src, GstCaps * caps)
     VmbFeatureIntSet(vimbasrc->camera->camera_handle, "Height",
         vimbasrc->camera->height
     );
-    /* FIXME: Set capability from fomat */
+    /* Set capability from fomat */
+    if (strcmp(gst_structure_get_name(structure),"video/x-bayer") == 0) {
+        vimbasrc->camera->format = vimbasrc_gstreamer_to_vimba_bayer(info.finfo->name);
+    } else {
+        vimbasrc->camera->format = vimbasrc_gstreamer_to_vimba_raw(info.finfo->name);
+    }
+    g_message("Setting camera format: %s", vimbasrc->camera->format);
     VmbFeatureEnumSet(vimbasrc->camera->camera_handle, "PixelFormat",
-        "BGR8Packed"
+        vimbasrc->camera->format
     );
 
     g_mutex_unlock(&vimbasrc->config_lock);

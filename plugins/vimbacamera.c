@@ -90,63 +90,57 @@ gboolean vimbacamera_load (VimbaCamera * camera) {
         "HeightMax",
         &(camera->max_height)
     );
-    if (VmbErrorSuccess != err) {
-        g_error("Unable to get max height");
-        print_feature_error(err);
-        res = FALSE;
-    };
-    err = VmbFeatureIntGet(
+    /*
+     *if (VmbErrorSuccess != err) {
+     *    g_error("Unable to get max height");
+     *    print_feature_error(err);
+     *    res = FALSE;
+     *};
+     */
+    VmbFeatureIntGet(
         camera->camera_handle,
         "WidthMax",
         &(camera->max_width)
     );
-    if (VmbErrorSuccess != err) {
-        g_error("Unable to get max width");
-        print_feature_error(err);
-        res = FALSE;
-    };
-    err = VmbFeatureIntGet(
+    VmbFeatureIntGet(
         camera->camera_handle,
         "Width",
         &(camera->width)
     );
-    if (VmbErrorSuccess != err) {
-        g_error("Unable to get width");
-        print_feature_error(err);
-        res = FALSE;
-    };
-    err = VmbFeatureIntGet(
+    VmbFeatureIntGet(
         camera->camera_handle,
         "Height",
         &(camera->height)
     );
-    if (VmbErrorSuccess != err) {
-        g_error("Unable to get height");
-        print_feature_error(err);
-        res = FALSE;
-    };
-    err = VmbFeatureEnumGet(
+    VmbFeatureEnumGet(
         camera->camera_handle,
         "PixelFormat",
         &(camera->format)
     );
-    if (VmbErrorSuccess != err) {
-        g_error("Unable to get pixelformat");
-        print_feature_error(err);
-        res = FALSE;
-    }
-    err = VmbFeatureEnumRangeQuery(
+    VmbFeatureEnumRangeQuery(
         camera->camera_handle,
         "PixelFormat",
         camera->supported_formats,
         GST_VIMBA_SRC_MAXFORMATS,
-        &(camera->format_count)
+        &camera->format_count
     );
-    if (VmbErrorSuccess != err) {
-        g_error("Unable to get pixelformat list");
-        print_feature_error(err);
-        res = FALSE;
-    }
+    /*
+     *unsigned int i;
+     *for (i = 0; i < camera->format_count; i++) {
+     *    g_message("%s", camera->supported_formats[i]);
+     *}
+     */
+    VmbFeatureFloatRangeQuery(
+        camera->camera_handle,
+        "AcquisitionFrameRateAbs",
+        &camera->min_framerate,
+        &camera->max_framerate
+    );
+    VmbFeatureFloatGet(
+        camera->camera_handle,
+        "AcquisitionFrameRateAbs",
+        &camera->framerate
+    );
     return res;
 }
 

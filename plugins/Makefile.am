@@ -1,7 +1,7 @@
 plugin_LTLIBRARIES = libgstvimba.la
 
 # sources used to compile this plug-in
-libgstvimba_la_SOURCES = gstvimbasrc.c gstvimbasrc.h vimbacamera.h vimbacamera.c vimba.h vimba.c
+libgstvimba_la_SOURCES = gstvimbasrc.c gstvimbasrc.h vimbacamera.h vimbacamera.c vimba.h vimba.c pixelformat.h pixelformat.c
 
 # compiler and linker flags used to compile this plugin, set in configure.ac
 libgstvimba_la_CFLAGS = $(GST_CFLAGS)
