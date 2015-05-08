@@ -8,7 +8,7 @@ const char* GST_RAW_FORMATS[RAW_FORMAT_COUNT] = {
     "RGBA",
     "BGRA",
     "Y41P",
-    "YUY2",
+    "UYVY",
     "IYU2"
 };
 
