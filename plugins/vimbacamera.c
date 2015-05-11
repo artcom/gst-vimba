@@ -19,7 +19,16 @@ VmbFrame_t * vimbacamera_consume_frame() {
 
 void vimbacamera_queue_frame (VimbaCamera * camera, VmbFrame_t * frame) {
     /*g_message("queuing frame %lu", (unsigned long int) frame->frameID);*/
-    VmbCaptureFrameQueue(camera->camera_handle, frame, &frame_callback);
+    VmbError_t err = VmbCaptureFrameQueue(
+        camera->camera_handle,
+        frame,
+        &frame_callback
+    );
+    if (VmbErrorBadHandle == err) {
+        g_error("Invalid frame");
+    } else if (VmbErrorStructSize == err) {
+        g_error("Invalid struct size for current frame");
+    }
 }
 
 
@@ -199,21 +208,10 @@ gboolean vimbacamera_start (VimbaCamera * camera) {
 
     /* Queue frames */
     for (i = 0; i < VIMBA_FRAME_COUNT; i++) {
-        err = VmbCaptureFrameQueue(
-            camera->camera_handle,
-            &camera->frames[i],
-            &frame_callback
-        );
-        if (VmbErrorBadHandle == err) {
-            g_error("Invalid frame");
-            return FALSE;
-        } else if (VmbErrorStructSize == err) {
-            g_error("Invalid struct size for current frame");
-            return FALSE;
-        }
+        vimbacamera_queue_frame(camera, &camera->frames[i]);
     }
-    /* Start aquisition */
 
+    /* Start aquisition */
     err = VmbFeatureCommandRun(camera->camera_handle, "AcquisitionStart");
     if (VmbErrorInvalidAccess == err) {
         g_error("Operation not valid with curren access mode");
