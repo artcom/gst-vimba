@@ -184,6 +184,13 @@ gboolean vimbacamera_start (VimbaCamera * camera) {
     /* Create global frame queue that's going to be used by gstreamer */
     frame_queue = g_async_queue_new();
 
+    /* Continuous frame grabbing (in contrast to single frame capture) */
+    err = VmbFeatureEnumSet(
+        camera->camera_handle,
+        "AcquisitionMode",
+        "Continuous"
+    );
+
     /* Create and announce frame buffers */
     err = VmbFeatureIntGet(
         camera->camera_handle,
