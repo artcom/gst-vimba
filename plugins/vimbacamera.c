@@ -200,9 +200,10 @@ gboolean vimbacamera_start (VimbaCamera * camera) {
 
     /* create and announce frame buffers */
     for (i = 0; i < VIMBA_FRAME_COUNT; i++) {
+        memset(&camera->frames[i], 0, sizeof(VmbFrame_t));
         camera->frames[i].buffer = (unsigned char*)malloc((VmbUint32_t)camera->payload_size);
-        memset(camera->frames[i].buffer, 22*i, camera->payload_size);
         camera->frames[i].bufferSize = (VmbUint32_t)camera->payload_size;
+        /* Somehow announcing a frame prevented the api from working */
 //        VmbFrameAnnounce(
 //            camera->camera_handle,
 //            &camera->frames[i],
