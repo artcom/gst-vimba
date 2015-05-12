@@ -297,13 +297,12 @@ gst_vimba_src_get_caps (GstBaseSrc * src, GstCaps * filter)
     raw   = gst_caps_get_structure(caps, 0);
     bayer = gst_caps_get_structure(caps, 1);
 
+    g_message("current framerate: %lu", vimbasrc->camera->framerate);
+
     gst_structure_set(raw,
         "width",  GST_TYPE_INT_RANGE, 1, vimbasrc->camera->max_width,
         "height", GST_TYPE_INT_RANGE, 1, vimbasrc->camera->max_height,
-        "framerate", GST_TYPE_FRACTION, 1, 30,
-        /*"framerate", GST_TYPE_FRACTION_RANGE,*/
-        /*1, (int)vimbasrc->camera->min_framerate,*/
-        /*1, (int)vimbasrc->camera->max_framerate,*/
+        "framerate", GST_TYPE_FRACTION, 30, 1,
         NULL
     );
     bayer = gst_structure_copy(raw);
