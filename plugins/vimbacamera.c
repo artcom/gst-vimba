@@ -274,3 +274,22 @@ void vimbacamera_capture (VimbaCamera * camera) {
     );
     VmbCaptureFrameWait(camera->camera_handle, &camera->frames[0], 9000);
 }
+
+#define VMB_HANDLE_FEATURE_ERROR(err) \
+    if (VmbErrorBadHandle == err) { \
+        g_error("You have to open the camera before setting any features!"); \
+    } else if (VmbErrorWrongType == err) { \
+        g_error("%s has the wrong type!", name); \
+    } \
+
+void vimbacamera_set_feature_int (VimbaCamera * camera, const char * name, int value) {
+    VmbError_t err = VmbFeatureIntSet(camera->camera_handle, name, value);
+    VMB_HANDLE_FEATURE_ERROR(err);
+}
+
+long long vimbacamera_get_feature_int (VimbaCamera * camera, const char * name) {
+    long long value = 0;
+    VmbError_t err = VmbFeatureIntGet(camera->camera_handle, name, &value);
+    VMB_HANDLE_FEATURE_ERROR(err);
+    return value;
+}

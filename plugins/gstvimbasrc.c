@@ -62,7 +62,9 @@ static GstFlowReturn gst_vimba_src_create (GstPushSrc * src, GstBuffer **buf);
 enum
 {
     PROP_0,
-    PROP_CAMERA
+    PROP_CAMERA,
+    PROP_OFFSET_X,
+    PROP_OFFSET_Y
 };
 
 #define VIMBASRC_VIDEO_CAPS GST_VIDEO_CAPS_MAKE (GST_VIDEO_FORMATS_ALL) ";" \
@@ -138,6 +140,34 @@ gst_vimba_src_class_init (GstVimbaSrcClass * klass)
         )
     );
 
+    g_object_class_install_property(
+        gobject_class,
+        PROP_OFFSET_X,
+        g_param_spec_int(
+            "offset-x",
+            "OffsetX",
+            "The x offset of the capture frame",
+            0,
+            G_MAXINT32,
+            0,
+            G_PARAM_READWRITE
+        )
+    );
+
+    g_object_class_install_property(
+        gobject_class,
+        PROP_OFFSET_Y,
+        g_param_spec_int(
+            "offset-y",
+            "OffsetY",
+            "The y offset of the capture frame",
+            0,
+            G_MAXINT32,
+            0,
+            G_PARAM_READWRITE
+        )
+    );
+
 }
 
 static void
@@ -185,6 +215,20 @@ gst_vimba_src_set_property (GObject * object, guint property_id,
             }
             g_mutex_unlock(&vimbasrc->config_lock);
             break;
+        case PROP_OFFSET_X:
+            g_mutex_lock(&vimbasrc->config_lock);
+            int offset_x = g_value_get_int(value);
+            g_message("setting offset x to %d", offset_x);
+            vimbacamera_set_feature_int(vimbasrc->camera, "OffsetX", offset_x);
+            g_mutex_unlock(&vimbasrc->config_lock);
+            break;
+        case PROP_OFFSET_Y:
+            g_mutex_lock(&vimbasrc->config_lock);
+            int offset_y = g_value_get_int(value);
+            g_message("setting offset y to %d", offset_y);
+            vimbacamera_set_feature_int(vimbasrc->camera, "OffsetY", offset_y);
+            g_mutex_unlock(&vimbasrc->config_lock);
+            break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
             break;
@@ -202,6 +246,12 @@ gst_vimba_src_get_property (GObject * object, guint property_id,
     switch (property_id) {
         case PROP_CAMERA:
             g_value_set_string(value, vimbasrc->camera->camera_id);
+            break;
+        case PROP_OFFSET_X:
+            g_value_set_int(value, vimbacamera_get_feature_int(vimbasrc->camera, "OffsetX"));
+            break;
+        case PROP_OFFSET_Y:
+            g_value_set_int(value, vimbacamera_get_feature_int(vimbasrc->camera, "OffsetY"));
             break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);

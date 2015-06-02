@@ -40,5 +40,7 @@ gboolean     vimbacamera_stop (VimbaCamera * camera);
 void         vimbacamera_capture (VimbaCamera * camera);
 VmbFrame_t * vimbacamera_consume_frame ();
 void         vimbacamera_queue_frame (VimbaCamera * camera, VmbFrame_t * frame);
+void         vimbacamera_set_feature_int(VimbaCamera * camera, const char * name, int value);
+long long    vimbacamera_get_feature_int(VimbaCamera * camera, const char * name);
 
 #endif
