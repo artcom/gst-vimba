@@ -1,13 +1,18 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "vimbacamera.h"
 
-void VMB_CALL frame_callback( const VmbHandle_t camera_handle, VmbFrame_t * frame) {
+void VMB_CALL frame_callback(
+    const VmbHandle_t camera_handle, VmbFrame_t * frame
+) {
     if (VmbFrameStatusComplete == frame->receiveStatus) {
         /*g_message("Frame received %lu", (unsigned long int)frame->frameID);*/
         g_async_queue_push(frame_queue, frame);
     } else {
-        g_message("Error receiving frame %lu", (unsigned long int) frame->frameID);
+        g_message(
+            "Error receiving frame %lu", (unsigned long int) frame->frameID
+        );
     }
 }
 
@@ -203,7 +208,9 @@ gboolean vimbacamera_start (VimbaCamera * camera) {
     /* create and announce frame buffers */
     for (i = 0; i < VIMBA_FRAME_COUNT; i++) {
         memset(&camera->frames[i], 0, sizeof(VmbFrame_t));
-        camera->frames[i].buffer = (unsigned char*)malloc((VmbUint32_t)camera->payload_size);
+        camera->frames[i].buffer = (unsigned char*)malloc(
+                                       (VmbUint32_t)camera->payload_size
+                                   );
         camera->frames[i].bufferSize = (VmbUint32_t)camera->payload_size;
         /* Somehow announcing a frame prevented the api from working */
 //        VmbFrameAnnounce(
