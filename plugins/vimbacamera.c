@@ -291,14 +291,96 @@ void vimbacamera_capture (VimbaCamera * camera) {
         g_error("%s has the wrong type!", name); \
     } \
 
-void vimbacamera_set_feature_int (VimbaCamera * camera, const char * name, int value) {
+void vimbacamera_set_feature_int(
+    VimbaCamera * camera, const char * name, int value
+) {
     VmbError_t err = VmbFeatureIntSet(camera->camera_handle, name, value);
     VMB_HANDLE_FEATURE_ERROR(err);
 }
 
-long long vimbacamera_get_feature_int (VimbaCamera * camera, const char * name) {
+long long vimbacamera_get_feature_int(VimbaCamera * camera, const char * name) {
     long long value = 0;
     VmbError_t err = VmbFeatureIntGet(camera->camera_handle, name, &value);
     VMB_HANDLE_FEATURE_ERROR(err);
     return value;
 }
+
+void vimbacamera_list_features(VimbaCamera * camera) {
+    VmbFeatureInfo_t *features;
+    VmbUint32_t i, string_size = 0, count = 0;
+    VmbInt64_t int_value = 0;
+    char bool_value = 'f';
+    double float_value = 0;
+    const char * enum_value = NULL;
+    char buffer[1024];
+    char value_string[1024];
+    VmbError_t err;
+    FILE * outfile = fopen("/tmp/features.txt", "w");
+
+    err = VmbFeaturesList(
+        camera->camera_handle, NULL, 0, &count, sizeof *features
+    );
+
+    if (VmbErrorSuccess == err && 0 < count) {
+        features = malloc(count * sizeof(VmbFeatureInfo_t));
+        err = VmbFeaturesList(
+            camera->camera_handle, features, count, &count, sizeof(*features)
+        );
+        for (i = 0; i < count; ++i) {
+            switch(features[i].featureDataType) {
+                case VmbFeatureDataInt:
+                    VmbFeatureIntGet(
+                        camera->camera_handle,
+                        features[i].name,
+                        &int_value
+                    );
+                    sprintf(value_string, "%lld", int_value);
+                    break;
+                case VmbFeatureDataBool:
+                    VmbFeatureBoolGet(
+                        camera->camera_handle,
+                        features[i].name,
+                        &bool_value
+                    );
+                    sprintf(value_string, "%c", bool_value);
+                    break;
+                case VmbFeatureDataFloat:
+                    VmbFeatureFloatGet(
+                        camera->camera_handle,
+                        features[i].name,
+                        &float_value
+                    );
+                    sprintf(value_string, "%f", float_value);
+                    break;
+                case VmbFeatureDataEnum:
+                    VmbFeatureEnumGet(
+                        camera->camera_handle,
+                        features[i].name,
+                        &enum_value
+                    );
+                    sprintf(value_string, "%s", enum_value);
+                    break;
+                case VmbFeatureDataString:
+                    VmbFeatureStringGet(
+                        camera->camera_handle,
+                        features[i].name,
+                        buffer,
+                        1024,
+                        &string_size
+                    );
+                    sprintf(value_string, "%s", buffer);
+                    break;
+                default:
+                    break;
+            }
+            fprintf(
+                outfile,
+                "Feature %s: %s\n",
+                features[i].name,
+                value_string
+            );
+        }
+    }
+    fclose(outfile);
+}
+
