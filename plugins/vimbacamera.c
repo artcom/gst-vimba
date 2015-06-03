@@ -68,7 +68,6 @@ gboolean vimbacamera_open (VimbaCamera * camera) {
 
     if (VmbErrorSuccess == err) {
         g_message("success!");
-        VmbFeatureIntSet(camera->camera_handle,"StreamHoldCapacity",80);
         VmbFeatureIntSet(camera->camera_handle, "GevSCPSPacketSize", 1500);
     } else if (VmbErrorNotFound == err) {
         g_error("Camera %s not found", camera->camera_id);
