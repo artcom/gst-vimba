@@ -41,8 +41,15 @@ void vimba_discover(Vimba* vimba) {
         err = VmbCamerasList(NULL, 0, &vimba->count, sizeof(VmbCameraInfo_t) );
         g_message("Found %d cameras", vimba->count);
         if (VmbErrorSuccess == err) {
-            vimba->camera_list = (VmbCameraInfo_t*) malloc(vimba->count * sizeof(VmbCameraInfo_t) );
-            err = VmbCamerasList(vimba->camera_list, vimba->count, &vimba->count, sizeof(VmbCameraInfo_t) );
+            vimba->camera_list = (VmbCameraInfo_t*) malloc(
+                                     vimba->count * sizeof(VmbCameraInfo_t)
+                                 );
+            err = VmbCamerasList(
+                      vimba->camera_list,
+                      vimba->count,
+                      &vimba->count,
+                      sizeof(VmbCameraInfo_t)
+                  );
             g_message("Found the following cameras:\n");
             for (i = 0; i < vimba->count; ++i) {
                 g_message("\t%s\n", vimba->camera_list[i].cameraIdString);
