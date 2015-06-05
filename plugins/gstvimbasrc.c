@@ -36,6 +36,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <glib.h>
 #include <gst/gst.h>
 #include <gst/base/gstpushsrc.h>
 #include <gst/video/video-info.h>
