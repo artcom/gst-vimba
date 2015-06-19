@@ -18,6 +18,8 @@ struct _VimbaCamera {
     VmbInt64_t  max_height;
     VmbInt64_t  width;
     VmbInt64_t  height;
+    VmbInt64_t  binning_h;
+    VmbInt64_t  binning_v;
     double      max_framerate;
     double      min_framerate;
     double      framerate;

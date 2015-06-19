@@ -65,7 +65,9 @@ enum
     PROP_0,
     PROP_CAMERA,
     PROP_OFFSET_X,
-    PROP_OFFSET_Y
+    PROP_OFFSET_Y,
+    PROP_BINNING_H,
+    PROP_BINNING_V
 };
 
 #define VIMBASRC_VIDEO_CAPS GST_VIDEO_CAPS_MAKE (GST_VIDEO_FORMATS_ALL) ";" \
@@ -169,6 +171,34 @@ gst_vimba_src_class_init (GstVimbaSrcClass * klass)
         )
     );
 
+    g_object_class_install_property(
+        gobject_class,
+        PROP_BINNING_H,
+        g_param_spec_int(
+            "binning-h",
+            "BinningHorizontal",
+            "The horizontal binning factor",
+            1,
+            8,
+            1,
+            G_PARAM_READWRITE
+        )
+    );
+
+    g_object_class_install_property(
+        gobject_class,
+        PROP_BINNING_V
+        g_param_spec_int(
+            "binning-v",
+            "BinningVertical",
+            "The vertical binning factor",
+            1,
+            8,
+            1,
+            G_PARAM_READWRITE
+        )
+    );
+
 }
 
 static void
@@ -230,6 +260,20 @@ gst_vimba_src_set_property (GObject * object, guint property_id,
             vimbacamera_set_feature_int(vimbasrc->camera, "OffsetY", offset_y);
             g_mutex_unlock(&vimbasrc->config_lock);
             break;
+        case PROP_BINNING_X:
+            g_mutex_lock(&vimbasrc->config_lock);
+            int binning_h = g_value_get_int(value);
+            g_message("setting binning horizontal to %d", binning_h);
+            vimbacamera_set_feature_int(vimbasrc->camera, "BinningHorizontal", binning_h);
+            g_mutex_unlock(&vimbasrc->config_lock);
+            break;
+        case PROP_BINNING_Y:
+            g_mutex_lock(&vimbasrc->config_lock);
+            int binning_v = g_value_get_int(value);
+            g_message("setting binning vertical to %d", binning_v);
+            vimbacamera_set_feature_int(vimbasrc->camera, "BinningVertical", binning_v);
+            g_mutex_unlock(&vimbasrc->config_lock);
+            break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
             break;
@@ -253,6 +297,12 @@ gst_vimba_src_get_property (GObject * object, guint property_id,
             break;
         case PROP_OFFSET_Y:
             g_value_set_int(value, vimbacamera_get_feature_int(vimbasrc->camera, "OffsetY"));
+            break;
+        case PROP_BINNING_H:
+            g_value_set_int(value, vimbacamera_get_feature_int(vimbasrc->camera, "BinningHorizontal"));
+            break;
+        case PROP_BINNING_V:
+            g_value_set_int(value, vimbacamera_get_feature_int(vimbasrc->camera, "BinningVertical"));
             break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);

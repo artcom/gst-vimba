@@ -129,6 +129,16 @@ gboolean vimbacamera_load (VimbaCamera * camera) {
         "Height",
         &(camera->height)
     );
+    VmbFeatureIntGet(
+        camera->camera_handle,
+        "BinningHorizontal",
+        &(camera->binning_h)
+    );
+    VmbFeatureIntGet(
+        camera->camera_handle,
+        "BinningVertical",
+        &(camera->binning_v)
+    );
     VmbFeatureEnumGet(
         camera->camera_handle,
         "PixelFormat",
@@ -164,11 +174,15 @@ gboolean vimbacamera_load (VimbaCamera * camera) {
         \tMaxHeight:\t\t%lu\n \
         \tWidth:\t\t\t%lu\n \
         \tHeight:\t\t\t%lu\n \
+        \tBinningHorizontal:\t\t\t%lu\n \
+        \tBinningVertical:\t\t\t%lu\n \
         \tFormat:\t\t\t%s",
         (unsigned long int) camera->max_width,
         (unsigned long int) camera->max_height,
         (unsigned long int) camera->width,
         (unsigned long int) camera->height,
+        (unsigned long int) camera->binning_h,
+        (unsigned long int) camera->binning_v,
         camera->format
     );
     return res;
