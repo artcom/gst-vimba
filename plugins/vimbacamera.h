@@ -27,6 +27,7 @@ struct _VimbaCamera {
     const char* supported_formats[GST_VIMBA_SRC_MAXFORMATS];
     VmbUint32_t format_count;
     VmbUint64_t base_time;
+    gboolean    open;
     gboolean    started;
 };
 
@@ -38,7 +39,7 @@ gboolean     vimbacamera_load (VimbaCamera * camera);
 gboolean     vimbacamera_start (VimbaCamera * camera);
 gboolean     vimbacamera_stop (VimbaCamera * camera);
 void         vimbacamera_capture (VimbaCamera * camera);
-VmbFrame_t * vimbacamera_consume_frame ();
+VmbFrame_t * vimbacamera_consume_frame (VimbaCamera * camera);
 void         vimbacamera_queue_frame (VimbaCamera * camera, VmbFrame_t * frame);
 void         vimbacamera_set_feature_int(VimbaCamera * camera, const char * name, int value);
 long long    vimbacamera_get_feature_int(VimbaCamera * camera, const char * name);

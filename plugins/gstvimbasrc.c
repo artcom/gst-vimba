@@ -199,20 +199,31 @@ gst_vimba_src_set_property (GObject * object, guint property_id,
     switch (property_id) {
         case PROP_CAMERA:
             g_mutex_lock(&vimbasrc->config_lock);
+            VmbUint32_t i = 0;
             const gchar* camera_id = g_value_get_string(value);
-            vimbasrc->camera->camera_id = camera_id;
-            /* open the camera */
-            if (vimbacamera_open(vimbasrc->camera)) {
-                if (vimbacamera_load(vimbasrc->camera)) {
-                    g_message(
-                        "camera configuration: width: %lu, height: %lu, format: %s",
-                        (unsigned long) vimbasrc->camera->width,
-                        (unsigned long) vimbasrc->camera->height,
-                        vimbasrc->camera->format
-                    );
-                } else {
-                    g_error("cannot fetch initial camera settings");
+            vimbasrc->camera->camera_id = NULL;
+            for (i = 0; i < vimbasrc->vimba->count; ++i) {
+                if (vimbasrc->vimba->camera_list[i].cameraIdString == camera_id) {
+                    vimbasrc->camera->camera_id = camera_id;
+                    break;
                 }
+            }
+            /* open the camera */
+            if (vimbasrc->camera->camera_id != NULL) {
+                if (vimbacamera_open(vimbasrc->camera)) {
+                    if (vimbacamera_load(vimbasrc->camera)) {
+                        g_message(
+                                "camera configuration: width: %lu, height: %lu, format: %s",
+                                (unsigned long) vimbasrc->camera->width,
+                                (unsigned long) vimbasrc->camera->height,
+                                vimbasrc->camera->format
+                                );
+                    } else {
+                        g_error("cannot fetch initial camera settings");
+                    }
+                }
+            } else {
+                g_message("Camera %s not found!", camera_id);
             }
             g_mutex_unlock(&vimbasrc->config_lock);
             break;
@@ -466,7 +477,7 @@ gst_vimba_src_create (GstPushSrc * src, GstBuffer ** bufp)
     base_time = GST_ELEMENT_CAST (src)->base_time;
     GST_OBJECT_UNLOCK(src);
 
-    VmbFrame_t * frame = vimbacamera_consume_frame();
+    VmbFrame_t * frame = vimbacamera_consume_frame(vimbasrc->camera);
     if (frame) {
         buf = gst_buffer_new_allocate(NULL, frame->bufferSize, NULL);
         if (buf) {

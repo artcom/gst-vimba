@@ -16,7 +16,10 @@ void VMB_CALL frame_callback(
     }
 }
 
-VmbFrame_t * vimbacamera_consume_frame() {
+VmbFrame_t * vimbacamera_consume_frame(VimbaCamera * camera) {
+    if (camera->started == FALSE) {
+        return NULL;
+    }
     VmbFrame_t * frame = g_async_queue_pop(frame_queue);
     /*g_message("Frame consumed %lu", (unsigned long int) frame->frameID);*/
     return frame;
@@ -40,6 +43,7 @@ void vimbacamera_queue_frame (VimbaCamera * camera, VmbFrame_t * frame) {
 VimbaCamera* vimbacamera_init() {
     VimbaCamera* camera = malloc(sizeof(VimbaCamera));
     camera->started = FALSE;
+    camera->open = FALSE;
     return camera;
 }
 
@@ -68,6 +72,7 @@ gboolean vimbacamera_open (VimbaCamera * camera) {
 
     if (VmbErrorSuccess == err) {
         g_message("success!");
+        camera->open = TRUE;
         VmbFeatureIntSet(camera->camera_handle, "GevSCPSPacketSize", 1500);
     } else if (VmbErrorNotFound == err) {
         g_error("Camera %s not found", camera->camera_id);
@@ -82,9 +87,12 @@ gboolean vimbacamera_open (VimbaCamera * camera) {
 
 gboolean vimbacamera_close (VimbaCamera * camera) {
     VmbError_t err;
-    err = VmbCameraClose(camera->camera_handle);
-    if (err != VmbErrorSuccess) {
-        return FALSE;
+    if (camera->open == TRUE) {
+        g_message("vimbacamera_close");
+        err = VmbCameraClose(camera->camera_handle);
+        if (err != VmbErrorSuccess) {
+            return FALSE;
+        }
     }
     return TRUE;
 }
@@ -177,6 +185,10 @@ gboolean vimbacamera_load (VimbaCamera * camera) {
 
 gboolean vimbacamera_start (VimbaCamera * camera) {
 
+    if (camera->open == FALSE) {
+        return TRUE;
+    }
+    g_message("vimbacamera_start");
     if (camera->started == TRUE) {
         vimbacamera_stop(camera);
     }
@@ -237,10 +249,15 @@ gboolean vimbacamera_start (VimbaCamera * camera) {
         return FALSE;
     }
     g_message("Acquisition started");
+    camera->started = TRUE;
     return TRUE;
 }
 
 gboolean vimbacamera_stop (VimbaCamera * camera) {
+    if (camera->open == FALSE) {
+        return TRUE;
+    }
+    g_message("vimbacamera_stop");
     if (!VmbFeatureCommandRun(
             camera->camera_handle,
             "AcquisitionStop"
@@ -285,7 +302,7 @@ void vimbacamera_capture (VimbaCamera * camera) {
 
 #define VMB_HANDLE_FEATURE_ERROR(err) \
     if (VmbErrorBadHandle == err) { \
-        g_error("You have to open the camera before setting any features!"); \
+        g_message("You have to open the camera before setting any features!"); \
     } else if (VmbErrorWrongType == err) { \
         g_error("%s has the wrong type!", name); \
     } \
