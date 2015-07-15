@@ -314,6 +314,20 @@ void vimbacamera_set_feature_int(
     VMB_HANDLE_FEATURE_ERROR(err);
 }
 
+float vimbacamera_get_feature_float(VimbaCamera * camera, const char * name) {
+    float value = 0.f;
+    VmbError_t err = VmbFeatureFloatGet(camera->camera_handle, name, &value);
+    VMB_HANDLE_FEATURE_ERROR(err);
+    return value;
+}
+
+void vimbacamera_set_feature_float(
+    VimbaCamera * camera, const char * name, float value
+) {
+    VmbError_t err = VmbFeatureFloatSet(camera->camera_handle, name, value);
+    VMB_HANDLE_FEATURE_ERROR(err);
+}
+
 long long vimbacamera_get_feature_int(VimbaCamera * camera, const char * name) {
     long long value = 0;
     VmbError_t err = VmbFeatureIntGet(camera->camera_handle, name, &value);

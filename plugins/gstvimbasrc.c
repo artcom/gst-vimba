@@ -65,7 +65,8 @@ enum
     PROP_0,
     PROP_CAMERA,
     PROP_OFFSET_X,
-    PROP_OFFSET_Y
+    PROP_OFFSET_Y,
+    PROP_EXPOSURE_TIME
 };
 
 #define VIMBASRC_VIDEO_CAPS GST_VIDEO_CAPS_MAKE (GST_VIDEO_FORMATS_ALL) ";" \
@@ -162,9 +163,23 @@ gst_vimba_src_class_init (GstVimbaSrcClass * klass)
             "offset-y",
             "OffsetY",
             "The y offset of the capture frame",
+            G_MINFLOAT,
+            G_MAXFLOAT,
+            0,
+            G_PARAM_READWRITE
+        )
+    );
+
+    g_object_class_install_property(
+        gobject_class,
+        PROP_EXPOSURE_TIME,
+        g_param_spec_float(
+            "exposure-time",
+            "ExposureTime",
+            "The exposure time of the camera in us",
             0,
             G_MAXINT32,
-            0,
+            100.f,
             G_PARAM_READWRITE
         )
     );
@@ -241,6 +256,13 @@ gst_vimba_src_set_property (GObject * object, guint property_id,
             vimbacamera_set_feature_int(vimbasrc->camera, "OffsetY", offset_y);
             g_mutex_unlock(&vimbasrc->config_lock);
             break;
+        case PROP_EXPOSURE_TIME:
+            g_mutex_lock(&vimbasrc->config_lock);
+            float exposure_time = g_value_get_float(value);
+            g_message("setting exposure time to %f", exposure_time);
+            vimbacamera_set_feature_float(vimbasrc->camera, "ExposureTime", exposure_time);
+            g_mutex_unlock(&vimbasrc->config_lock);
+            break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
             break;
@@ -264,6 +286,9 @@ gst_vimba_src_get_property (GObject * object, guint property_id,
             break;
         case PROP_OFFSET_Y:
             g_value_set_int(value, vimbacamera_get_feature_int(vimbasrc->camera, "OffsetY"));
+            break;
+        case PROP_EXPOSURE_TIME:
+            g_value_set_float(value, vimbacamera_get_feature_float(vimbasrc->camera, "ExposureTime"));
             break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);

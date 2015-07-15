@@ -43,6 +43,8 @@ VmbFrame_t * vimbacamera_consume_frame (VimbaCamera * camera);
 void         vimbacamera_queue_frame (VimbaCamera * camera, VmbFrame_t * frame);
 void         vimbacamera_set_feature_int(VimbaCamera * camera, const char * name, int value);
 long long    vimbacamera_get_feature_int(VimbaCamera * camera, const char * name);
+void         vimbacamera_set_feature_float(VimbaCamera * camera, const char * name, float value);
+float        vimbacamera_get_feature_float(VimbaCamera * camera, const char * name);
 void         vimbacamera_list_features(VimbaCamera * camera);
 
 #endif
