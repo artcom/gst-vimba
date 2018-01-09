@@ -203,7 +203,7 @@ gst_vimba_src_set_property (GObject * object, guint property_id,
             const gchar* camera_id = g_value_get_string(value);
             vimbasrc->camera->camera_id = NULL;
             for (i = 0; i < vimbasrc->vimba->count; ++i) {
-                if (vimbasrc->vimba->camera_list[i].cameraIdString == camera_id) {
+                if (!(strcmp(vimbasrc->vimba->camera_list[i].cameraIdString, camera_id))) {
                     vimbasrc->camera->camera_id = camera_id;
                     break;
                 }
