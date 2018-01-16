@@ -478,7 +478,7 @@ gst_vimba_src_create (GstPushSrc * src, GstBuffer ** bufp)
     GST_OBJECT_UNLOCK(src);
 
     VmbFrame_t * frame = vimbacamera_consume_frame(vimbasrc->camera);
-    if (frame) {
+    while (frame && ret != GST_FLOW_OK) {
         if (VmbFrameStatusComplete == frame->receiveStatus) {
             /*g_message("Frame received %lu", (unsigned long int)frame->frameID);*/
 
@@ -508,6 +508,7 @@ gst_vimba_src_create (GstPushSrc * src, GstBuffer ** bufp)
             );
         }  
         vimbacamera_queue_frame(vimbasrc->camera, frame);
+        frame = vimbacamera_consume_frame(vimbasrc->camera);
     }
 
     if (clock) {
