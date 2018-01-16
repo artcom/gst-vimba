@@ -32,6 +32,8 @@ void vimbacamera_queue_frame (VimbaCamera * camera, VmbFrame_t * frame) {
         g_error("Invalid struct size for current frame");
     } else if (VmbErrorTimeout == err) {
 	g_error("Call timed out");
+    } else if (VmbErrorApiNotStarted == err) {
+	g_error("Api not started");
     }
 }
 
