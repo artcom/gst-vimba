@@ -27,13 +27,13 @@ void vimbacamera_queue_frame (VimbaCamera * camera, VmbFrame_t * frame) {
         &frame_callback
     );
     if (VmbErrorBadHandle == err) {
-        g_error("Invalid frame");
+        g_message("Invalid frame");
     } else if (VmbErrorStructSize == err) {
         g_error("Invalid struct size for current frame");
     } else if (VmbErrorTimeout == err) {
-	g_error("Call timed out");
+        g_error("Call timed out");
     } else if (VmbErrorApiNotStarted == err) {
-	g_error("Api not started");
+        g_error("Api not started");
     }
 }
 
