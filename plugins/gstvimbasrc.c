@@ -479,21 +479,35 @@ gst_vimba_src_create (GstPushSrc * src, GstBuffer ** bufp)
 
     VmbFrame_t * frame = vimbacamera_consume_frame(vimbasrc->camera);
     if (frame) {
-        buf = gst_buffer_new_allocate(NULL, frame->bufferSize, NULL);
-        if (buf) {
-            timestamp = gst_clock_get_time(clock) - base_time;
-            GST_BUFFER_DTS(buf) = timestamp;
-            GST_BUFFER_PTS(buf) = GST_BUFFER_DTS(buf);
-            /*gst_buffer_memset(buf, 0, 111 * rand(), frame->bufferSize);*/
-            gst_buffer_fill(
-                buf, 0,
-                frame->buffer,
-                frame->bufferSize
+        if (VmbFrameStatusComplete == frame->receiveStatus) {
+            /*g_message("Frame received %lu", (unsigned long int)frame->frameID);*/
+
+            buf = gst_buffer_new_allocate(NULL, frame->bufferSize, NULL);
+            if (buf) {
+                timestamp = gst_clock_get_time(clock) - base_time;
+                GST_BUFFER_DTS(buf) = timestamp;
+                GST_BUFFER_PTS(buf) = GST_BUFFER_DTS(buf);
+                /*gst_buffer_memset(buf, 0, 111 * rand(), frame->bufferSize);*/
+                gst_buffer_fill(
+                    buf, 0,
+                    frame->buffer,
+                    frame->bufferSize
+                );
+            }
+            ret = GST_FLOW_OK;
+            *bufp = buf;
+        } else if (VmbFrameStatusIncomplete == frame->receiveStatus) {
+            g_message("Frame %lu incomplete", (unsigned long int) frame->frameID);
+        } else if (VmbFrameStatusTooSmall == frame->receiveStatus) {
+            g_message("Frame %lu too small", (unsigned long int) frame->frameID);
+        } else if (VmbFrameStatusInvalid == frame->receiveStatus) {
+            g_message("Frame %lu invalid", (unsigned long int) frame->frameID);
+        } else {
+            g_message(
+                "Error receiving frame %lu", (unsigned long int) frame->frameID
             );
-            vimbacamera_queue_frame(vimbasrc->camera, frame);
-        }
-        ret = GST_FLOW_OK;
-        *bufp = buf;
+        }  
+        vimbacamera_queue_frame(vimbasrc->camera, frame);
     }
 
     if (clock) {

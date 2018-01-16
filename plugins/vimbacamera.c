@@ -6,20 +6,8 @@
 void VMB_CALL frame_callback(
     const VmbHandle_t camera_handle, VmbFrame_t * frame
 ) {
-    if (VmbFrameStatusComplete == frame->receiveStatus) {
-        /*g_message("Frame received %lu", (unsigned long int)frame->frameID);*/
-        g_async_queue_push(frame_queue, frame);
-    } else if (VmbFrameStatusIncomplete == frame->receiveStatus) {
-	g_message("Frame %lu incomplete", (unsigned long int) frame->frameID);
-    } else if (VmbFrameStatusTooSmall == frame->receiveStatus) {
-	g_message("Frame %lu too small", (unsigned long int) frame->frameID);
-    } else if (VmbFrameStatusInvalid == frame->receiveStatus) {
-	g_message("Frame %lu invalid", (unsigned long int) frame->frameID);
-    } else {
-        g_message(
-            "Error receiving frame %lu", (unsigned long int) frame->frameID
-        );
-    }
+      /*g_message("Frame received %lu", (unsigned long int)frame->frameID);*/
+      g_async_queue_push(frame_queue, frame);
 }
 
 VmbFrame_t * vimbacamera_consume_frame(VimbaCamera * camera) {
