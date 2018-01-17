@@ -477,39 +477,26 @@ gst_vimba_src_create (GstPushSrc * src, GstBuffer ** bufp)
     base_time = GST_ELEMENT_CAST (src)->base_time;
     GST_OBJECT_UNLOCK(src);
 
-    do {
-        VmbFrame_t * frame = vimbacamera_consume_frame(vimbasrc->camera);
-        if (frame == NULL) break;
-        if (VmbFrameStatusComplete == frame->receiveStatus) {
-            /*g_message("Frame received %lu", (unsigned long int)frame->frameID);*/
-
-            buf = gst_buffer_new_allocate(NULL, frame->bufferSize, NULL);
-            if (buf) {
-                timestamp = gst_clock_get_time(clock) - base_time;
-                GST_BUFFER_DTS(buf) = timestamp;
-                GST_BUFFER_PTS(buf) = GST_BUFFER_DTS(buf);
-                /*gst_buffer_memset(buf, 0, 111 * rand(), frame->bufferSize);*/
-                gst_buffer_fill(
-                    buf, 0,
-                    frame->buffer,
-                    frame->bufferSize
-                );
-            }
-            ret = GST_FLOW_OK;
-            *bufp = buf;
-        } else if (VmbFrameStatusIncomplete == frame->receiveStatus) {
-            g_message("Frame %lu incomplete", (unsigned long int) frame->frameID);
-        } else if (VmbFrameStatusTooSmall == frame->receiveStatus) {
-            g_message("Frame %lu too small", (unsigned long int) frame->frameID);
-        } else if (VmbFrameStatusInvalid == frame->receiveStatus) {
-            g_message("Frame %lu invalid", (unsigned long int) frame->frameID);
-        } else {
-            g_message(
-                "Error receiving frame %lu", (unsigned long int) frame->frameID
-            );
-        }  
-        vimbacamera_queue_frame(vimbasrc->camera, frame);
-    } while (ret != GST_FLOW_OK); 
+    VimbaFrame * frame = vimbacamera_consume_frame(vimbasrc->camera);
+    if (frame) {
+        buf = gst_buffer_new_wrapped(frame->buffer, frame->bufferSize);
+        if (buf) {
+            g_message("new Vimba frame");
+            timestamp = gst_clock_get_time(clock) - base_time;
+            GST_BUFFER_DTS(buf) = timestamp;
+            GST_BUFFER_PTS(buf) = GST_BUFFER_DTS(buf);
+            /*gst_buffer_memset(buf, 0, 111 * rand(), frame->bufferSize);*/
+            //gst_buffer_fill(
+            //        buf, 0,
+            //        frame->buffer,
+            //        frame->bufferSize
+            //        );
+        }
+        ret = GST_FLOW_OK;
+        *bufp = buf;
+        frame->buffer = NULL;
+        free(frame);
+    }
 
     if (clock) {
         gst_object_unref(clock);

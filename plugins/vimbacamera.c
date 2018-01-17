@@ -14,12 +14,12 @@ void VMB_CALL frame_callback(
     * VmbCaptureFrameQueue with this callback
     */
     if (VmbFrameStatusComplete == frame->receiveStatus) {
-        /*g_message("Frame received %lu", (unsigned long int)frame->frameID);*/
-        VmbFrame_t * q_frame;
-        memcpy((void *)q_frame->buffer, (void *)frame->buffer, frame->bufferSize); 
+        g_message("Frame received %lu", (unsigned long int)frame->frameID);
+        VimbaFrame * q_frame = malloc(sizeof(struct VimbaFrame));
+        q_frame->buffer = (unsigned char*)malloc( (VmbUint32_t)frame->bufferSize);
+        q_frame->bufferSize = (int)frame->bufferSize;
+        memcpy(q_frame->buffer, frame->buffer, frame->bufferSize);
         g_async_queue_push(frame_queue, q_frame);
-
-
     } else if (VmbFrameStatusIncomplete == frame->receiveStatus) {
         g_message("Frame %lu incomplete", (unsigned long int) frame->frameID);
     } else if (VmbFrameStatusTooSmall == frame->receiveStatus) {
