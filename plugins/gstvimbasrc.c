@@ -477,11 +477,11 @@ gst_vimba_src_create (GstPushSrc * src, GstBuffer ** bufp)
     base_time = GST_ELEMENT_CAST (src)->base_time;
     GST_OBJECT_UNLOCK(src);
 
-    VimbaFrame * frame = vimbacamera_consume_frame(vimbasrc->camera);
+    VmbFrame_t * frame = vimbacamera_consume_frame(vimbasrc->camera);
     if (frame) {
         buf = gst_buffer_new_wrapped(frame->buffer, frame->bufferSize);
         if (buf) {
-            g_message("new Vimba frame");
+            //g_message("new Vimba frame");
             timestamp = gst_clock_get_time(clock) - base_time;
             GST_BUFFER_DTS(buf) = timestamp;
             GST_BUFFER_PTS(buf) = GST_BUFFER_DTS(buf);

@@ -14,8 +14,8 @@ void VMB_CALL frame_callback(
     * VmbCaptureFrameQueue with this callback
     */
     if (VmbFrameStatusComplete == frame->receiveStatus) {
-        g_message("Frame received %lu", (unsigned long int)frame->frameID);
-        VimbaFrame * q_frame = malloc(sizeof(struct VimbaFrame));
+        //g_message("Frame received %lu", (unsigned long int)frame->frameID);
+        VmbFrame_t * q_frame = malloc(sizeof(VmbFrame_t));
         q_frame->buffer = (unsigned char*)malloc( (VmbUint32_t)frame->bufferSize);
         q_frame->bufferSize = (int)frame->bufferSize;
         memcpy(q_frame->buffer, frame->buffer, frame->bufferSize);
