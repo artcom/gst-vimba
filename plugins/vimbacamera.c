@@ -14,10 +14,13 @@ void VMB_CALL frame_callback(
     * VmbCaptureFrameQueue with this callback
     */
     if (VmbFrameStatusComplete == frame->receiveStatus) {
-        g_message("Frame received %lu", (unsigned long int)frame->frameID);
-        VimbaFrame * q_frame = malloc(sizeof(struct VimbaFrame));
+        //g_message("Frame received %lu", (unsigned long int)frame->frameID);
+        VmbFrame_t * q_frame = malloc(sizeof(VmbFrame_t));
         q_frame->buffer = (unsigned char*)malloc( (VmbUint32_t)frame->bufferSize);
-        q_frame->bufferSize = (int)frame->bufferSize;
+        q_frame->bufferSize = frame->bufferSize;
+	q_frame->frameID = frame->frameID;
+	q_frame->receiveFlags = frame->receiveFlags;
+        q_frame->timestamp = frame->timestamp;	
         memcpy(q_frame->buffer, frame->buffer, frame->bufferSize);
         g_async_queue_push(frame_queue, q_frame);
     } else if (VmbFrameStatusIncomplete == frame->receiveStatus) {
@@ -234,7 +237,6 @@ gboolean vimbacamera_start (VimbaCamera * camera) {
         "Continuous"
     );
 
-    /* Create and announce frame buffers */
     err = VmbFeatureIntGet(
         camera->camera_handle,
         "PayloadSize",
