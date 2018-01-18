@@ -482,7 +482,12 @@ gst_vimba_src_create (GstPushSrc * src, GstBuffer ** bufp)
         buf = gst_buffer_new_wrapped(frame->buffer, frame->bufferSize);
         if (buf) {
             //g_message("new Vimba frame");
-            timestamp = gst_clock_get_time(clock) - base_time;
+            // check, if frame contains a timestamp
+            if (frame->receiveFlags & 8) {
+              timestamp = (GstClockTime) frame->timestamp;
+            } else {
+              timestamp = gst_clock_get_time(clock) - base_time;
+            }
             GST_BUFFER_DTS(buf) = timestamp;
             GST_BUFFER_PTS(buf) = GST_BUFFER_DTS(buf);
             /*gst_buffer_memset(buf, 0, 111 * rand(), frame->bufferSize);*/
