@@ -28,7 +28,8 @@ struct _VimbaCamera {
     VmbUint32_t format_count;
     VmbUint64_t base_time;
     gboolean    open;
-    gboolean    started;
+    gboolean    streaming_started;
+    gboolean    acquiring;
 };
 
 VimbaCamera* vimbacamera_init();

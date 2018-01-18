@@ -41,7 +41,7 @@ void VMB_CALL frame_callback(
 }
 
 VmbFrame_t * vimbacamera_consume_frame(VimbaCamera * camera) {
-    if (camera->started == FALSE) {
+    if (camera->acquiring == FALSE) {
         return NULL;
     }
     VmbFrame_t * frame = g_async_queue_pop(frame_queue);
@@ -70,7 +70,8 @@ void vimbacamera_queue_frame (VimbaCamera * camera, VmbFrame_t * frame) {
 
 VimbaCamera* vimbacamera_init() {
     VimbaCamera* camera = malloc(sizeof(VimbaCamera));
-    camera->started = FALSE;
+    camera->acquiring = FALSE;
+    camera->streaming_started = FALSE;
     camera->open = FALSE;
     return camera;
 }
@@ -97,11 +98,25 @@ gboolean vimbacamera_open (VimbaCamera * camera) {
         VmbAccessModeFull,
         &(camera->camera_handle)
     );
-
+    VmbBool_t IsCommandDone = VmbBoolFalse;
+    
     if (VmbErrorSuccess == err) {
         g_message("success!");
         camera->open = TRUE;
-        VmbFeatureIntSet(camera->camera_handle, "GevSCPSPacketSize", 1500);
+        // Set the GeV packet size to the highest possible value
+        // (In this example we do not test whether this cam actually is a GigE cam)
+        if ( VmbErrorSuccess == VmbFeatureCommandRun( camera->camera_handle, "GVSPAdjustPacketSize" )) {
+            do {
+                if ( VmbErrorSuccess != VmbFeatureCommandIsDone(    camera->camera_handle,
+            							"GVSPAdjustPacketSize",
+            							&IsCommandDone ))
+                {
+            	break;
+                }
+            } while ( VmbBoolFalse == IsCommandDone );
+        }
+
+        //VmbFeatureIntSet(camera->camera_handle, "GevSCPSPacketSize", 1500);
     } else if (VmbErrorNotFound == err) {
         g_error("Camera %s not found", camera->camera_id);
         return FALSE;
@@ -216,13 +231,10 @@ gboolean vimbacamera_start (VimbaCamera * camera) {
     if (camera->open == FALSE) {
         return TRUE;
     }
-    g_message("vimbacamera_start");
-    if (camera->started == TRUE) {
-        vimbacamera_stop(camera);
-    }
-
     VmbError_t err;
     int i;
+
+    g_message("vimbacamera_start");
 
     /* Reset base time (should be set when reading the first frame) */
     camera->base_time = 0;
@@ -230,53 +242,65 @@ gboolean vimbacamera_start (VimbaCamera * camera) {
     /* Create global frame queue that's going to be used by gstreamer */
     frame_queue = g_async_queue_new();
 
-    /* Continuous frame grabbing (in contrast to single frame capture) */
-    err = VmbFeatureEnumSet(
-        camera->camera_handle,
-        "AcquisitionMode",
-        "Continuous"
-    );
-
     err = VmbFeatureIntGet(
         camera->camera_handle,
         "PayloadSize",
          &camera->payload_size
     );
 
+    g_message("payload %lu, %d", (unsigned int)camera->payload_size, err);
+    memset( camera->frames, 0, sizeof( camera->frames ));
+
     /* create and announce frame buffers */
     for (i = 0; i < VIMBA_FRAME_COUNT; i++) {
-        memset(&camera->frames[i], 0, sizeof(VmbFrame_t));
+        //memset(&camera->frames[i], 0, sizeof(VmbFrame_t));
         camera->frames[i].buffer = (unsigned char*)malloc(
                                        (VmbUint32_t)camera->payload_size
                                    );
         camera->frames[i].bufferSize = (VmbUint32_t)camera->payload_size;
         /* Somehow announcing a frame prevented the api from working */
-//        VmbFrameAnnounce(
-//            camera->camera_handle,
-//            &camera->frames[i],
-//            sizeof(VmbFrame_t)
-//        );
+        err = VmbFrameAnnounce(
+            camera->camera_handle,
+            &camera->frames[i],
+            sizeof(VmbFrame_t)
+        );
+	if (err != VmbErrorSuccess) {
+	    g_message("error from frame announce %d", err);
+	}
     }
 
     /* Start capture engine */
-    VmbCaptureStart(camera->camera_handle);
+    err = VmbCaptureStart(camera->camera_handle);
+    if (VmbErrorSuccess == err) {
 
-    /* Queue frames */
-    for (i = 0; i < VIMBA_FRAME_COUNT; i++) {
-        vimbacamera_queue_frame(camera, &camera->frames[i]);
+        camera->streaming_started = TRUE;
+        /* Queue frames */
+        for (i = 0; i < VIMBA_FRAME_COUNT; i++) {
+            vimbacamera_queue_frame(camera, &camera->frames[i]);
+        }
+        
+        /* Continuous frame grabbing (in contrast to single frame capture) */
+        //err = VmbFeatureEnumSet(
+        //    camera->camera_handle,
+        //    "AcquisitionMode",
+        //    "Continuous"
+        //);
+        
+        /* Start aquisition */
+        err = VmbFeatureCommandRun(camera->camera_handle, "AcquisitionStart");
+        if (VmbErrorSuccess == err) {
+            g_message("Acquisition started");
+            camera->acquiring = TRUE;
+        } else if (VmbErrorInvalidAccess == err) {
+            g_error("Operation not valid with curren access mode");
+        } else if (VmbErrorWrongType == err) {
+            g_error("Not a command");
+        }
     }
-
-    /* Start aquisition */
-    err = VmbFeatureCommandRun(camera->camera_handle, "AcquisitionStart");
-    if (VmbErrorInvalidAccess == err) {
-        g_error("Operation not valid with curren access mode");
-        return FALSE;
-    } else if (VmbErrorWrongType == err) {
-        g_error("Not a command");
+    if( VmbErrorSuccess != err ) {
+        vimbacamera_stop(camera);
         return FALSE;
     }
-    g_message("Acquisition started");
-    camera->started = TRUE;
     return TRUE;
 }
 
@@ -284,27 +308,38 @@ gboolean vimbacamera_stop (VimbaCamera * camera) {
     if (camera->open == FALSE) {
         return TRUE;
     }
-    g_message("vimbacamera_stop");
-    if (!VmbFeatureCommandRun(
-            camera->camera_handle,
-            "AcquisitionStop"
-        )
-    ) {
-        return FALSE;
-    }
-    VmbCaptureQueueFlush(camera->camera_handle);
-    VmbCaptureEnd(camera->camera_handle);
-    VmbFrameRevokeAll(camera->camera_handle);
-
-    g_async_queue_unref(frame_queue);
-
+    VmbError_t err;
     int i;
-    for (i = 0; i < VIMBA_FRAME_COUNT; i++) {
-        free(camera->frames[i].buffer);
-    }
+    g_message("vimbacamera_stop");
+    if (camera->camera_handle != NULL) {
+        if (camera->acquiring) {
+            err = VmbFeatureCommandRun( camera->camera_handle, "AcquisitionStop");
+            if (VmbErrorSuccess != err) {
+                g_message("failed to AcquisitionStop");
+            }
+            g_message("Acquisition stopped");
+            camera->acquiring = FALSE;
+        }
+        if (camera->streaming_started) {
+            err = VmbCaptureEnd(camera->camera_handle);
+            if (VmbErrorSuccess != err) {
+                g_message("failed to VmbCaptureEnd");
+            }
+            camera->streaming_started = FALSE;
+        }
+        VmbCaptureQueueFlush(camera->camera_handle);
 
-    g_message("Acquisition stopped");
-    camera->started = FALSE;
+        for (i = 0; i < VIMBA_FRAME_COUNT; i++) {
+            if( NULL != camera->frames[i].buffer ) {
+                VmbFrameRevoke( camera->camera_handle, &camera->frames[i] );
+                free(camera->frames[i].buffer);
+                memset( &camera->frames[i], 0, sizeof( VmbFrame_t ));
+            }
+
+        }
+    
+        g_async_queue_unref(frame_queue);
+    }
     return TRUE;
 }
 

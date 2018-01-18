@@ -441,8 +441,8 @@ gst_vimba_src_start (GstBaseSrc * src)
     GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (src);
 
     vimbacamera_start(vimbasrc->camera);
-    VmbFrame_t * frame = vimbacamera_consume_frame(vimbasrc->camera);
-    vimba_base_time = frame->timestamp;
+    //VmbFrame_t * frame = vimbacamera_consume_frame(vimbasrc->camera);
+    //vimba_base_time = frame->timestamp;
 
     GST_DEBUG_OBJECT (vimbasrc, "start");
 
@@ -490,12 +490,12 @@ gst_vimba_src_create (GstPushSrc * src, GstBuffer ** bufp)
             // check, if frame contains a timestamp
             unsigned long int vimba_timestamp = 0;          
 	    //if (frame->receiveFlags & 8) {
-	    timestamp = (GstClockTime) frame->timestamp - vimba_base_time;
+	    //timestamp = (GstClockTime) frame->timestamp - vimba_base_time;
 	    //  g_message("timestamp received");
             //} else {
 	    //  vimba_timestamp = 0; 
 	    //}
-            //timestamp = gst_clock_get_time(clock) - base_time;
+            timestamp = gst_clock_get_time(clock) - base_time;
 	    g_message(
 		"frameID: %lu\ntimestamp: %lu\nvimba timestamp: %lu\n", 
 		(unsigned long int) frame->frameID, 
