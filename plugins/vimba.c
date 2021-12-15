@@ -31,7 +31,7 @@ void vimba_discover(Vimba* vimba) {
             err = VmbFeatureCommandRun(gVimbaHandle, "GeVDiscoveryAllOnce");
         }
     } else {
-        g_error("No transport layer");
+        g_message("No transport layer");
     }
     if (VmbErrorSuccess == err) {
         if (vimba->camera_list) {
@@ -39,6 +39,10 @@ void vimba_discover(Vimba* vimba) {
             vimba->camera_list = NULL;
         }
         err = VmbCamerasList(NULL, 0, &vimba->count, sizeof(VmbCameraInfo_t) );
+        if (vimba->count == 0) {
+            g_message("No cameras found");
+            return;
+        }
         g_message("Found %d cameras", vimba->count);
         if (VmbErrorSuccess == err) {
             vimba->camera_list = (VmbCameraInfo_t*) malloc(
@@ -56,6 +60,6 @@ void vimba_discover(Vimba* vimba) {
             }
         }
     } else {
-        g_error("Unable to discover cameras");
+        g_message("Unable to discover cameras");
     }
 }

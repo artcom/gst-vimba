@@ -52,6 +52,7 @@ static void gst_vimba_src_set_property (GObject * object,
         guint property_id, const GValue * value, GParamSpec * pspec);
 static void gst_vimba_src_get_property (GObject * object,
         guint property_id, GValue * value, GParamSpec * pspec);
+static GstStateChangeReturn gst_vimba_src_change_state (GstElement * element, GstStateChange transition);
 static void gst_vimba_src_dispose (GObject * object);
 static void gst_vimba_src_finalize (GObject * object);
 static GstCaps *gst_vimba_src_get_caps (GstBaseSrc * src, GstCaps * filter);
@@ -102,6 +103,7 @@ static void
 gst_vimba_src_class_init (GstVimbaSrcClass * klass)
 {
     GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+    GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
     GstBaseSrcClass *base_src_class = GST_BASE_SRC_CLASS (klass);
     GstPushSrcClass *push_src_class = GST_PUSH_SRC_CLASS (klass);
 
@@ -120,6 +122,7 @@ gst_vimba_src_class_init (GstVimbaSrcClass * klass)
 
     gobject_class->set_property = gst_vimba_src_set_property;
     gobject_class->get_property = gst_vimba_src_get_property;
+    element_class->change_state = gst_vimba_src_change_state;
     gobject_class->dispose = gst_vimba_src_dispose;
     gobject_class->finalize = gst_vimba_src_finalize;
     base_src_class->get_caps = GST_DEBUG_FUNCPTR (gst_vimba_src_get_caps);
@@ -199,32 +202,7 @@ gst_vimba_src_set_property (GObject * object, guint property_id,
     switch (property_id) {
         case PROP_CAMERA:
             g_mutex_lock(&vimbasrc->config_lock);
-            VmbUint32_t i = 0;
-            const gchar* camera_id = g_value_get_string(value);
-            vimbasrc->camera->camera_id = NULL;
-            for (i = 0; i < vimbasrc->vimba->count; ++i) {
-                if (!(strcmp(vimbasrc->vimba->camera_list[i].cameraIdString, camera_id))) {
-                    vimbasrc->camera->camera_id = camera_id;
-                    break;
-                }
-            }
-            /* open the camera */
-            if (vimbasrc->camera->camera_id != NULL) {
-                if (vimbacamera_open(vimbasrc->camera)) {
-                    if (vimbacamera_load(vimbasrc->camera)) {
-                        g_message(
-                                "camera configuration: width: %lu, height: %lu, format: %s",
-                                (unsigned long) vimbasrc->camera->width,
-                                (unsigned long) vimbasrc->camera->height,
-                                vimbasrc->camera->format
-                                );
-                    } else {
-                        g_error("cannot fetch initial camera settings");
-                    }
-                }
-            } else {
-                g_message("Camera %s not found!", camera_id);
-            }
+            vimbacamera_set_camera_id(vimbasrc->camera, g_value_get_string(value));
             g_mutex_unlock(&vimbasrc->config_lock);
             break;
         case PROP_OFFSET_X:
@@ -257,7 +235,7 @@ gst_vimba_src_get_property (GObject * object, guint property_id,
 
     switch (property_id) {
         case PROP_CAMERA:
-            g_value_set_string(value, vimbasrc->camera->camera_id);
+            g_value_set_string(value, vimbacamera_get_camera_id(vimbasrc->camera));
             break;
         case PROP_OFFSET_X:
             g_value_set_int(value, vimbacamera_get_feature_int(vimbasrc->camera, "OffsetX"));
@@ -269,6 +247,56 @@ gst_vimba_src_get_property (GObject * object, guint property_id,
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
             break;
     }
+}
+
+static GstStateChangeReturn
+gst_vimba_src_change_state (GstElement * element, GstStateChange transition)
+{
+    GstStateChangeReturn ret = GST_STATE_CHANGE_SUCCESS;
+    GstVimbaSrc *vimbasrc = GST_VIMBA_SRC (element);
+
+    switch (transition) {
+        case GST_STATE_CHANGE_NULL_TO_READY:
+            g_mutex_lock(&vimbasrc->config_lock);
+            VmbUint32_t i = 0;
+            const gchar* camera_id = NULL;
+            for (i = 0; i < vimbasrc->vimba->count; ++i) {
+                if (!(strcmp(vimbasrc->vimba->camera_list[i].cameraIdString, vimbasrc->camera->camera_id))) {
+                    camera_id = vimbasrc->camera->camera_id;
+                    break;
+                }
+            }
+
+            /* open the camera */
+            if (camera_id != NULL) {
+                if (vimbacamera_open(vimbasrc->camera)) {
+                    if (vimbacamera_load(vimbasrc->camera)) {
+                        g_message(
+                                "camera configuration: width: %lu, height: %lu, format: %s",
+                                (unsigned long) vimbasrc->camera->width,
+                                (unsigned long) vimbasrc->camera->height,
+                                vimbasrc->camera->format
+                                );
+                    } else {
+                        g_message("cannot fetch initial camera settings");
+                        ret = GST_STATE_CHANGE_FAILURE;
+                    }
+                }
+            } else {
+                g_message("Camera %s not found!", vimbasrc->camera->camera_id);
+                ret = GST_STATE_CHANGE_FAILURE;
+            }
+            g_mutex_unlock(&vimbasrc->config_lock);
+            break;
+        default:
+            break;
+
+    }
+    if (ret != GST_STATE_CHANGE_SUCCESS)
+        return ret;
+
+    ret = GST_ELEMENT_CLASS (gst_vimba_src_parent_class)->change_state (element, transition);
+    return ret;
 }
 
 void
@@ -312,6 +340,11 @@ gst_vimba_src_get_caps (GstBaseSrc * src, GstCaps * filter)
     g_mutex_lock(&vimbasrc->config_lock);
     caps = gst_pad_get_pad_template_caps(GST_BASE_SRC_PAD(src));
     caps = gst_caps_make_writable(caps);
+
+    if (!vimbasrc->camera->open) {
+        g_mutex_unlock(&vimbasrc->config_lock);
+        return caps;
+    }
 
     guint size = gst_caps_get_size(caps);
     g_message("num structures: %d", size );

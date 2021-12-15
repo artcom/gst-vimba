@@ -12,7 +12,7 @@ GAsyncQueue* frame_queue;
 
 typedef struct _VimbaCamera VimbaCamera;
 struct _VimbaCamera {
-    const char* camera_id;
+    char*       camera_id;
     VmbHandle_t camera_handle;
     VmbInt64_t  max_width;
     VmbInt64_t  max_height;
@@ -43,6 +43,8 @@ VmbFrame_t * vimbacamera_consume_frame (VimbaCamera * camera);
 void         vimbacamera_queue_frame (VimbaCamera * camera, VmbFrame_t * frame);
 void         vimbacamera_set_feature_int(VimbaCamera * camera, const char * name, int value);
 long long    vimbacamera_get_feature_int(VimbaCamera * camera, const char * name);
+void         vimbacamera_set_camera_id(VimbaCamera * camera, const char * value);
+const char * vimbacamera_get_camera_id(VimbaCamera * camera);
 void         vimbacamera_list_features(VimbaCamera * camera);
 
 #endif

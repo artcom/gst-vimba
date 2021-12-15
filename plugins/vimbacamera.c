@@ -42,11 +42,13 @@ VimbaCamera* vimbacamera_init() {
     VimbaCamera* camera = malloc(sizeof(VimbaCamera));
     camera->started = FALSE;
     camera->open = FALSE;
+    camera->camera_id = NULL;
     return camera;
 }
 
 void vimbacamera_destroy (VimbaCamera * camera) {
     g_async_queue_unref(frame_queue);
+    g_free(camera->camera_id);
     if (camera) {
         free(camera);
     }
@@ -317,6 +319,17 @@ long long vimbacamera_get_feature_int(VimbaCamera * camera, const char * name) {
     VmbError_t err = VmbFeatureIntGet(camera->camera_handle, name, &value);
     VMB_HANDLE_FEATURE_ERROR(err);
     return value;
+}
+
+void vimbacamera_set_camera_id(VimbaCamera * camera, const char * value)
+{
+    g_free(camera->camera_id);
+    camera->camera_id = g_strdup(value);
+}
+
+const char * vimbacamera_get_camera_id(VimbaCamera * camera)
+{
+    return camera->camera_id;
 }
 
 void vimbacamera_list_features(VimbaCamera * camera) {
