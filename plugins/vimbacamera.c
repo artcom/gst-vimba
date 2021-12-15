@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <stdio.h>
 #include "vimbacamera.h"
 
@@ -42,11 +43,19 @@ VimbaCamera* vimbacamera_init() {
     VimbaCamera* camera = malloc(sizeof(VimbaCamera));
     camera->started = FALSE;
     camera->open = FALSE;
+    camera->camera_id = NULL;
+    camera->exposure = NAN;
+    camera->exposure_auto = NULL;
+    camera->gain = NAN;
+    camera->gain_auto = NULL;
     return camera;
 }
 
 void vimbacamera_destroy (VimbaCamera * camera) {
     g_async_queue_unref(frame_queue);
+    g_free(camera->camera_id);
+    g_free(camera->exposure_auto);
+    g_free(camera->gain_auto);
     if (camera) {
         free(camera);
     }
@@ -164,19 +173,45 @@ gboolean vimbacamera_load (VimbaCamera * camera) {
         "AcquisitionFrameRateAbs",
         &camera->framerate
     );
+
+    if (camera->exposure_auto != NULL) {
+        vimbacamera_set_exposure_auto(camera, camera->exposure_auto);
+    }
+
+    if (!isnan(camera->exposure)) {
+        vimbacamera_set_exposure(camera, camera->exposure);
+    }
+
+    if (camera->gain_auto != NULL) {
+        vimbacamera_set_gain_auto(camera, camera->gain_auto);
+    }
+
+    if (!isnan(camera->gain)) {
+        vimbacamera_set_gain(camera, camera->gain);
+    }
+
     g_message(
         "Current camera configuration:\n \
         \tMaxWidth:\t\t%lu\n \
         \tMaxHeight:\t\t%lu\n \
         \tWidth:\t\t\t%lu\n \
         \tHeight:\t\t\t%lu\n \
-        \tFormat:\t\t\t%s",
+        \tFormat:\t\t\t%s\n \
+        \tExposure:\t\t%.1f\n \
+        \tExposureAuto:\t\t%s\n \
+        \tGain:\t\t\t%.1f\n \
+        \tGainAuto:\t\t%s",
         (unsigned long int) camera->max_width,
         (unsigned long int) camera->max_height,
         (unsigned long int) camera->width,
         (unsigned long int) camera->height,
-        camera->format
+        camera->format,
+        vimbacamera_get_exposure(camera),
+        vimbacamera_get_exposure_auto(camera),
+        vimbacamera_get_gain(camera),
+        vimbacamera_get_gain_auto(camera)
     );
+
     return res;
 }
 
@@ -317,6 +352,99 @@ long long vimbacamera_get_feature_int(VimbaCamera * camera, const char * name) {
     VmbError_t err = VmbFeatureIntGet(camera->camera_handle, name, &value);
     VMB_HANDLE_FEATURE_ERROR(err);
     return value;
+}
+
+void vimbacamera_set_camera_id(VimbaCamera * camera, const char * value)
+{
+    g_free(camera->camera_id);
+    camera->camera_id = g_strdup(value);
+}
+
+const char * vimbacamera_get_camera_id(VimbaCamera * camera)
+{
+    return camera->camera_id;
+}
+
+void vimbacamera_set_exposure(VimbaCamera * camera, float value)
+{
+    camera->exposure = value;
+    if (camera->open) {
+        g_message("setting exposure to %.1f", camera->exposure);
+        VmbFeatureFloatSet(camera->camera_handle, "ExposureTimeAbs", camera->exposure);
+    }
+}
+
+double vimbacamera_get_exposure(VimbaCamera * camera)
+{
+    if (camera->open) {
+        VmbFeatureFloatGet(camera->camera_handle, "ExposureTimeAbs", &camera->exposure);
+    }
+
+    return camera->exposure;
+}
+
+void vimbacamera_set_exposure_auto(VimbaCamera * camera, const char * value)
+{
+    char * old = camera->gain_auto;
+    camera->exposure_auto = g_strdup(value);
+    g_free(old);
+    if (camera->open) {
+        g_message("setting exposure auto to %s", camera->exposure_auto);
+        VmbFeatureEnumSet(camera->camera_handle, "ExposureAuto", camera->exposure_auto);
+    }
+}
+
+const char * vimbacamera_get_exposure_auto(VimbaCamera * camera)
+{
+    if (camera->open) {
+        const char * value;
+        VmbFeatureEnumGet(camera->camera_handle, "ExposureAuto", &value);
+        g_free(camera->exposure_auto);
+        camera->exposure_auto = g_strdup(value);
+    }
+
+    return camera->exposure_auto;
+}
+
+void vimbacamera_set_gain(VimbaCamera * camera, float value)
+{
+    camera->gain = value;
+    if (camera->open) {
+        g_message("setting gain to %.1f", camera->gain);
+        VmbFeatureFloatSet(camera->camera_handle, "Gain", camera->gain);
+    }
+}
+
+double vimbacamera_get_gain(VimbaCamera * camera)
+{
+    if (camera->open) {
+        VmbFeatureFloatGet(camera->camera_handle, "Gain", &camera->gain);
+    }
+
+    return camera->gain;
+}
+
+void vimbacamera_set_gain_auto(VimbaCamera * camera, const char * value)
+{
+    char * old = camera->gain_auto;
+    camera->gain_auto = g_strdup(value);
+    g_free(old);
+    if (camera->open) {
+        g_message("setting gain auto to %s", camera->gain_auto);
+        VmbFeatureEnumSet(camera->camera_handle, "GainAuto", camera->gain_auto);
+    }
+}
+
+const char * vimbacamera_get_gain_auto(VimbaCamera * camera)
+{
+    if (camera->open) {
+        const char * value;
+        VmbFeatureEnumGet(camera->camera_handle, "GainAuto", &value);
+        g_free(camera->gain_auto);
+        camera->gain_auto = g_strdup(value);
+    }
+
+    return camera->gain_auto;
 }
 
 void vimbacamera_list_features(VimbaCamera * camera) {
