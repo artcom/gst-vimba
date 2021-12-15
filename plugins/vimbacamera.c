@@ -230,7 +230,11 @@ gboolean vimbacamera_start (VimbaCamera * camera) {
     }
 
     /* Start capture engine */
-    VmbCaptureStart(camera->camera_handle);
+    err = VmbCaptureStart(camera->camera_handle);
+    if (err != VmbErrorSuccess) {
+        g_error("Could not start capture: %d", err);
+        return FALSE;
+    }
 
     /* Queue frames */
     for (i = 0; i < VIMBA_FRAME_COUNT; i++) {
@@ -256,11 +260,15 @@ gboolean vimbacamera_stop (VimbaCamera * camera) {
         return TRUE;
     }
     g_message("vimbacamera_stop");
-    if (!VmbFeatureCommandRun(
+
+    VmbError_t err;
+
+    err = VmbFeatureCommandRun(
             camera->camera_handle,
             "AcquisitionStop"
-        )
-    ) {
+        );
+    if (err != VmbErrorSuccess) {
+        g_message("Could not stop acquisition: %d", err);
         return FALSE;
     }
     VmbCaptureQueueFlush(camera->camera_handle);
