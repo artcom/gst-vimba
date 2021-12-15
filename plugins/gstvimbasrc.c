@@ -66,7 +66,11 @@ enum
     PROP_0,
     PROP_CAMERA,
     PROP_OFFSET_X,
-    PROP_OFFSET_Y
+    PROP_OFFSET_Y,
+    PROP_EXPOSURE,
+    PROP_EXPOSURE_AUTO,
+    PROP_GAIN,
+    PROP_GAIN_AUTO
 };
 
 #define VIMBASRC_VIDEO_CAPS GST_VIDEO_CAPS_MAKE (GST_VIDEO_FORMATS_ALL) ";" \
@@ -172,6 +176,57 @@ gst_vimba_src_class_init (GstVimbaSrcClass * klass)
         )
     );
 
+    g_object_class_install_property(
+        gobject_class,
+        PROP_EXPOSURE,
+        g_param_spec_float(
+            "exposure",
+            "Exposure",
+            "Exposure",
+            0.0f,
+            G_MAXFLOAT,
+            0,
+            G_PARAM_READWRITE
+        )
+    );
+
+    g_object_class_install_property(
+        gobject_class,
+        PROP_EXPOSURE_AUTO,
+        g_param_spec_string(
+            "exposure-auto",
+            "Exposure Auto",
+            "Exposure Auto",
+            "Off",
+            G_PARAM_READWRITE
+        )
+    );
+
+    g_object_class_install_property(
+        gobject_class,
+        PROP_GAIN,
+        g_param_spec_float(
+            "gain",
+            "Gain",
+            "Gain",
+            0.0f,
+            G_MAXFLOAT,
+            0,
+            G_PARAM_READWRITE
+        )
+    );
+
+    g_object_class_install_property(
+        gobject_class,
+        PROP_GAIN_AUTO,
+        g_param_spec_string(
+            "gain-auto",
+            "Gain Auto",
+            "Gain Auto",
+            "Off",
+            G_PARAM_READWRITE
+        )
+    );
 }
 
 static void
@@ -219,6 +274,26 @@ gst_vimba_src_set_property (GObject * object, guint property_id,
             vimbacamera_set_feature_int(vimbasrc->camera, "OffsetY", offset_y);
             g_mutex_unlock(&vimbasrc->config_lock);
             break;
+        case PROP_EXPOSURE:
+            g_mutex_lock(&vimbasrc->config_lock);
+            vimbacamera_set_exposure(vimbasrc->camera, g_value_get_float(value));
+            g_mutex_unlock(&vimbasrc->config_lock);
+            break;
+        case PROP_EXPOSURE_AUTO:
+            g_mutex_lock(&vimbasrc->config_lock);
+            vimbacamera_set_exposure_auto(vimbasrc->camera, g_value_get_string(value));
+            g_mutex_unlock(&vimbasrc->config_lock);
+            break;
+        case PROP_GAIN:
+            g_mutex_lock(&vimbasrc->config_lock);
+            vimbacamera_set_gain(vimbasrc->camera, g_value_get_float(value));
+            g_mutex_unlock(&vimbasrc->config_lock);
+            break;
+        case PROP_GAIN_AUTO:
+            g_mutex_lock(&vimbasrc->config_lock);
+            vimbacamera_set_gain_auto(vimbasrc->camera, g_value_get_string(value));
+            g_mutex_unlock(&vimbasrc->config_lock);
+            break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
             break;
@@ -242,6 +317,18 @@ gst_vimba_src_get_property (GObject * object, guint property_id,
             break;
         case PROP_OFFSET_Y:
             g_value_set_int(value, vimbacamera_get_feature_int(vimbasrc->camera, "OffsetY"));
+            break;
+        case PROP_EXPOSURE:
+            g_value_set_float(value, vimbacamera_get_exposure(vimbasrc->camera));
+            break;
+        case PROP_EXPOSURE_AUTO:
+            g_value_set_string(value, vimbacamera_get_exposure_auto(vimbasrc->camera));
+            break;
+        case PROP_GAIN:
+            g_value_set_float(value, vimbacamera_get_gain(vimbasrc->camera));
+            break;
+        case PROP_GAIN_AUTO:
+            g_value_set_string(value, vimbacamera_get_gain_auto(vimbasrc->camera));
             break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);

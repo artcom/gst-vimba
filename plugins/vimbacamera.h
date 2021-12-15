@@ -29,6 +29,10 @@ struct _VimbaCamera {
     VmbUint64_t base_time;
     gboolean    open;
     gboolean    started;
+    double      exposure;
+    char*       exposure_auto;
+    double      gain;
+    char*       gain_auto;
 };
 
 VimbaCamera* vimbacamera_init();
@@ -45,6 +49,14 @@ void         vimbacamera_set_feature_int(VimbaCamera * camera, const char * name
 long long    vimbacamera_get_feature_int(VimbaCamera * camera, const char * name);
 void         vimbacamera_set_camera_id(VimbaCamera * camera, const char * value);
 const char * vimbacamera_get_camera_id(VimbaCamera * camera);
+void         vimbacamera_set_exposure(VimbaCamera * camera, float value);
+double       vimbacamera_get_exposure(VimbaCamera * camera);
+void         vimbacamera_set_exposure_auto(VimbaCamera * camera, const char * value);
+const char * vimbacamera_get_exposure_auto(VimbaCamera * camera);
+void         vimbacamera_set_gain(VimbaCamera * camera, float value);
+double       vimbacamera_get_gain(VimbaCamera * camera);
+void         vimbacamera_set_gain_auto(VimbaCamera * camera, const char * value);
+const char * vimbacamera_get_gain_auto(VimbaCamera * camera);
 void         vimbacamera_list_features(VimbaCamera * camera);
 
 #endif
