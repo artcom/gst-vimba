@@ -359,7 +359,7 @@ gst_vimba_src_get_caps (GstBaseSrc * src, GstCaps * filter)
     raw   = gst_caps_get_structure(caps, 0);
     bayer = gst_caps_get_structure(caps, 1);
 
-    g_message("current framerate: %lu", vimbasrc->camera->framerate);
+    g_message("current framerate: %f", vimbasrc->camera->framerate);
 
     gst_structure_set(raw,
         "width",  GST_TYPE_INT_RANGE, 1, vimbasrc->camera->max_width,
