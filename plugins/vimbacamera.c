@@ -221,12 +221,12 @@ gboolean vimbacamera_start (VimbaCamera * camera) {
                                        (VmbUint32_t)camera->payload_size
                                    );
         camera->frames[i].bufferSize = (VmbUint32_t)camera->payload_size;
-        /* Somehow announcing a frame prevented the api from working */
-//        VmbFrameAnnounce(
-//            camera->camera_handle,
-//            &camera->frames[i],
-//            sizeof(VmbFrame_t)
-//        );
+        /* Sometimes announcing a frame prevented the api from working */
+        VmbFrameAnnounce(
+            camera->camera_handle,
+            &camera->frames[i],
+            sizeof(VmbFrame_t)
+        );
     }
 
     /* Start capture engine */
